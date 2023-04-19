@@ -12,6 +12,9 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.URL;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,10 +27,18 @@ public class Controller implements Initializable {
     ListView<Message> chatContentList;
 
     String username;
+    @FXML
+    private TextArea inputArea;
+
+    private BufferedReader in;
+    private PrintWriter out;
+    public void setSocketIO(BufferedReader in, PrintWriter out) {
+        this.in = in;
+        this.out = out;
+    }
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-
         Dialog<String> dialog = new TextInputDialog();
         dialog.setTitle("Login");
         dialog.setHeaderText(null);
@@ -97,7 +108,38 @@ public class Controller implements Initializable {
      */
     @FXML
     public void doSendMessage() {
-        // TODO
+        String message = inputArea.getText().trim();
+
+        if (!message.isEmpty()) {
+            // TODO: Send the message to the server.
+            out.println(message);
+            Message msg = new Message(System.currentTimeMillis(),username,username,message);
+            chatContentList.getItems().add(msg);
+            // Clear the input field.
+            inputArea.clear();
+        }
+    }
+    private void startListeningForMessages() {
+        new Thread(() -> {
+            while (true) {
+                try {
+                    String message = in.readLine();
+                    if (message != null) {
+                        Platform.runLater(() -> {
+                            // Update the UI with the received message.
+                            // You can use the chatContentList and update it with the new message.
+                            // Assuming the server sends messages in the format "username:message"
+
+                            Message msg = new Message(System.currentTimeMillis(),username,username,message);
+                            chatContentList.getItems().add(msg);
+                        });
+                    }
+                } catch (IOException e) {
+                    System.out.println("Error: " + e.getMessage());
+                    break;
+                }
+            }
+        }).start();
     }
 
     /**
