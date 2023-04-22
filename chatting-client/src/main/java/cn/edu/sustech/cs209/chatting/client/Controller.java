@@ -12,30 +12,31 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
+import java.net.Socket;
 import java.net.URL;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class Controller implements Initializable {
 
     @FXML
     ListView<Message> chatContentList;
-
+    @FXML
+    Label currentUsername;
     String username;
+    String otherUser;
     @FXML
     private TextArea inputArea;
+    @FXML
+    ListView<CustomItem> chatList;
+    Socket socket;
 
-    private BufferedReader in;
-    private PrintWriter out;
-    public void setSocketIO(BufferedReader in, PrintWriter out) {
-        this.in = in;
-        this.out = out;
-    }
+    private ObjectInputStream in;
+    private ObjectOutputStream out;
+    private Map<ConversationKey, List<Message>> chatHistory = new HashMap<>();
+
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -50,7 +51,18 @@ public class Controller implements Initializable {
                TODO: Check if there is a user with the same name among the currently logged-in users,
                      if so, ask the user to change the username
              */
+
             username = input.get();
+            currentUsername.setText("Current User: " + username);
+            connectToServer();
+            chatList.setOnMouseClicked(event -> {
+                CustomItem selectedItem = chatList.getSelectionModel().getSelectedItem();
+                if (selectedItem != null) {
+                    switchToChat(selectedItem);
+                }
+            });
+
+
         } else {
             System.out.println("Invalid username " + input + ", exiting");
             Platform.exit();
@@ -58,20 +70,186 @@ public class Controller implements Initializable {
 
         chatContentList.setCellFactory(new MessageCellFactory());
     }
+    private void connectToServer() {
+        String serverAddress = "127.0.0.1";
+        int port = 12345;
+
+        try {
+            socket = new Socket(serverAddress, port);
+            out =  new ObjectOutputStream(socket.getOutputStream());
+            out.flush();
+            in = new ObjectInputStream(socket.getInputStream());
+
+            new Thread(() -> {
+                while (true) {
+                    try {
+                        Object input = null;
+                        try {
+                            input = in.readObject();
+                        } catch (ClassNotFoundException e) {
+                            System.out.println("Invalid object");
+                        }
+                        if (input == null) {
+                            break;
+                        }
+                        updateUserList();
+                        Message message = (Message) input;
+                        if (message != null) {
+                            Platform.runLater(() -> {
+                                // Update the UI with the received message.
+                                // You can use the chatContentList and update it with the new message.
+                                // Assuming the server sends messages in the format "username:message"
+
+                                chatContentList.getItems().add(message);
+                            });
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Error: " + e.getMessage());
+                        break;
+                    }
+                }
+            }).start();
+
+        } catch (IOException e) {
+            System.out.println(121);
+        }
+    }
+
+    private void switchToChat(CustomItem selectedItem) {
+        otherUser = selectedItem.getText();
+        ConversationKey key = new ConversationKey(username, otherUser);
+        List<Message> chatContent = chatHistory.getOrDefault(key, new ArrayList<>());
+
+        chatContentList.getItems().clear();
+        chatContentList.getItems().addAll(chatContent);
+    }
+
+    private void addMessageToHistory(String sender, String recipient, Message message) {
+        ConversationKey key = new ConversationKey(sender, recipient);
+        List<Message> conversation = chatHistory.getOrDefault(key, new ArrayList<>());
+        conversation.add(message);
+        chatHistory.put(key, conversation);
+    }
+
+
+//    private void openChatWindow(String username) {
+//        Stage chatWindow = new Stage();
+//        chatWindow.setTitle("Chat with " + username);
+//
+//        VBox layout = new VBox(10);
+//        layout.setPadding(new Insets(10));
+//
+//        ListView<String> messagesList = new ListView<>();
+//        TextField messageInput = new TextField();
+//        Button sendButton = new Button("Send");
+//
+//        sendButton.setOnAction(e -> {
+//            // TODO: Implement sending messages to the selected user
+//        });
+//
+//        layout.getChildren().addAll(messagesList, messageInput, sendButton);
+//        chatWindow.setScene(new Scene(layout, 300, 400));
+//        chatWindow.show();
+//    }
+
+    public List<CustomItem> requestUserList(Socket socket) {
+        // Send a command to the server to request the user list
+        try {
+            out.writeObject(username);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            out.writeObject("USERLIST");
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Read the response from the server
+        Message userListMsg = null;
+
+        try {
+            Object receivedObject = in.readObject();
+
+            if (receivedObject == null) {
+                System.out.println("Received null object");
+            } else {
+                System.out.println("Received object: " + receivedObject.toString());
+                userListMsg = (Message) receivedObject;
+            }
+        } catch (ClassNotFoundException e) {
+            System.out.println("Error reading object from the server: " + e.getMessage());
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.out.println("IOException occurred while reading object from the server: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+
+
+
+        String userListStr;
+        if(userListMsg!=null){
+             userListStr= userListMsg.getData();
+        }else userListStr="[error]";
+
+        userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
+        String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+        List<String> userList = Arrays.asList(userArray);
+        // Convert the String array to a List of CustomItem objects
+        List<CustomItem> customItems = userList.stream()
+                .map(CustomItem::new)
+                .collect(Collectors.toList());
+
+        return customItems;
+    }
+
+
+
+    private void updateUserList() {
+        List<CustomItem> userList = requestUserList(socket);
+        Platform.runLater(() -> {
+            chatList.getItems().clear();
+            chatList.getItems().addAll(userList.stream()
+                    .filter(item -> !item.getText().equals(username)).toList());
+        });
+    }
+
+
+    private List<String> getSelectedUsers() {
+        return chatList.getItems().stream()
+                .filter(CustomItem::isSelected)
+                .map(CustomItem::getText)
+                .collect(Collectors.toList());
+    }
+
+
+
+
 
     @FXML
     public void createPrivateChat() {
         AtomicReference<String> user = new AtomicReference<>();
 
+        // Call this method inside the createPrivateChat() method, before showing the stage
+        updateUserList();
         Stage stage = new Stage();
         ComboBox<String> userSel = new ComboBox<>();
 
         // FIXME: get the user list from server, the current user's name should be filtered out
-        userSel.getItems().addAll("Item 1", "Item 2", "Item 3");
+
+        List<CustomItem> customItems = new ArrayList<>();
+        customItems = requestUserList(socket);
+        userSel.getItems().addAll(customItems.stream().map(CustomItem::getText).toList());
 
         Button okBtn = new Button("OK");
         okBtn.setOnAction(e -> {
             user.set(userSel.getSelectionModel().getSelectedItem());
+            if (user.get() != null) {
+                chatList.getItems().add(new CustomItem(user.get()));
+            }
             stage.close();
         });
 
@@ -109,38 +287,43 @@ public class Controller implements Initializable {
     @FXML
     public void doSendMessage() {
         String message = inputArea.getText().trim();
-
+        Message msg = new Message(System.currentTimeMillis(),username,otherUser,message);
         if (!message.isEmpty()) {
             // TODO: Send the message to the server.
-            out.println(message);
-            Message msg = new Message(System.currentTimeMillis(),username,username,message);
+            try {
+                out.writeObject(msg);
+            } catch (IOException e) {
+                System.out.println("send illegal message");
+            }
+
+            addMessageToHistory(username,otherUser,msg);
             chatContentList.getItems().add(msg);
             // Clear the input field.
             inputArea.clear();
         }
     }
-    private void startListeningForMessages() {
-        new Thread(() -> {
-            while (true) {
-                try {
-                    String message = in.readLine();
-                    if (message != null) {
-                        Platform.runLater(() -> {
-                            // Update the UI with the received message.
-                            // You can use the chatContentList and update it with the new message.
-                            // Assuming the server sends messages in the format "username:message"
-
-                            Message msg = new Message(System.currentTimeMillis(),username,username,message);
-                            chatContentList.getItems().add(msg);
-                        });
-                    }
-                } catch (IOException e) {
-                    System.out.println("Error: " + e.getMessage());
-                    break;
-                }
-            }
-        }).start();
-    }
+//    private void startListeningForMessages() {
+//        new Thread(() -> {
+//            while (true) {
+//                try {
+//                    String message = in.readLine();
+//                    if (message != null) {
+//                        Platform.runLater(() -> {
+//                            // Update the UI with the received message.
+//                            // You can use the chatContentList and update it with the new message.
+//                            // Assuming the server sends messages in the format "username:message"
+//
+//                            Message msg = new Message(System.currentTimeMillis(),username,otherUser,message);
+//                            chatContentList.getItems().add(msg);
+//                        });
+//                    }
+//                } catch (IOException e) {
+//                    System.out.println("Error: " + e.getMessage());
+//                    break;
+//                }
+//            }
+//        }).start();
+//    }
 
     /**
      * You may change the cell factory if you changed the design of {@code Message} model.
