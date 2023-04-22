@@ -1,5 +1,6 @@
 package cn.edu.sustech.cs209.chatting.common;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 public class Message implements Serializable{
@@ -11,6 +12,7 @@ public class Message implements Serializable{
     private String sendTo;
 
     private String data;
+    @Serial
     private static final long serialVersionUID = 1L;
 
     public Message(Long timestamp, String sentBy, String sendTo, String data) {
@@ -36,4 +38,8 @@ public class Message implements Serializable{
         return data;
     }
 
+    @Override
+    public String toString() {
+        return data;
+    }
 }

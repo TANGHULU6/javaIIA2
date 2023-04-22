@@ -19,6 +19,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+
+
 public class Controller implements Initializable {
 
     @FXML
@@ -72,46 +74,30 @@ public class Controller implements Initializable {
     }
     private void connectToServer() {
         String serverAddress = "127.0.0.1";
-        int port = 12345;
+        int port = 5005;
 
         try {
             socket = new Socket(serverAddress, port);
             out =  new ObjectOutputStream(socket.getOutputStream());
+            //out.writeObject(new String());
             out.flush();
             in = new ObjectInputStream(socket.getInputStream());
+            //in.readObject();
 
             new Thread(() -> {
                 while (true) {
                     try {
-                        Object input = null;
-                        try {
-                            input = in.readObject();
-                        } catch (ClassNotFoundException e) {
-                            System.out.println("Invalid object");
-                        }
-                        if (input == null) {
-                            break;
-                        }
                         updateUserList();
-                        Message message = (Message) input;
-                        if (message != null) {
-                            Platform.runLater(() -> {
-                                // Update the UI with the received message.
-                                // You can use the chatContentList and update it with the new message.
-                                // Assuming the server sends messages in the format "username:message"
-
-                                chatContentList.getItems().add(message);
-                            });
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Error: " + e.getMessage());
-                        break;
+                         Thread.sleep(10000); // Sleep for 10 seconds
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
                 }
             }).start();
 
+
         } catch (IOException e) {
-            System.out.println(121);
+            System.out.println(1211);
         }
     }
 
@@ -154,54 +140,54 @@ public class Controller implements Initializable {
 
     public List<CustomItem> requestUserList(Socket socket) {
         // Send a command to the server to request the user list
-        try {
-            out.writeObject(username);
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try {
-            out.writeObject("USERLIST");
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        List<CustomItem> customItems=new ArrayList<>();
+        new Thread(()->{
+            while(true) {
+                try {
+                    out.writeObject(username);
+                    out.flush();
+                    out.writeObject("USERLIST");
+                    out.flush();
 
-        // Read the response from the server
-        Message userListMsg = null;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
 
-        try {
-            Object receivedObject = in.readObject();
+                // Read the response from the server
+                Object receivedObject = null;
+                try {
+                    receivedObject = in.readObject();
+                } catch (ClassNotFoundException | IOException e) {
+                    System.out.println("Received error object"+receivedObject);
+                    continue;
+                }
 
-            if (receivedObject == null) {
-                System.out.println("Received null object");
-            } else {
-                System.out.println("Received object: " + receivedObject.toString());
-                userListMsg = (Message) receivedObject;
+                if (receivedObject == null) {
+                    System.out.println("Received null object");
+                } else {
+                    System.out.println("Received object: " + receivedObject+ receivedObject.getClass());
+
+                }
+
+                String userListStr;
+                    if (receivedObject != null) {
+                        userListStr = receivedObject.toString();
+                    } else userListStr = "[error]";
+
+                    userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
+                    String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+                    List<String> userList = Arrays.asList(userArray);
+                    System.out.println(userList);
+                    // Convert the String array to a List of CustomItem objects
+                    customItems.addAll(userList.stream()
+                            .map(CustomItem::new).toList());
+                    break;
+
+
+
+
             }
-        } catch (ClassNotFoundException e) {
-            System.out.println("Error reading object from the server: " + e.getMessage());
-            e.printStackTrace();
-        } catch (IOException e) {
-            System.out.println("IOException occurred while reading object from the server: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-
-
-
-        String userListStr;
-        if(userListMsg!=null){
-             userListStr= userListMsg.getData();
-        }else userListStr="[error]";
-
-        userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
-        String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
-        List<String> userList = Arrays.asList(userArray);
-        // Convert the String array to a List of CustomItem objects
-        List<CustomItem> customItems = userList.stream()
-                .map(CustomItem::new)
-                .collect(Collectors.toList());
+        }).start();
 
         return customItems;
     }

@@ -17,4 +17,6 @@
             <artifactId>chatting-common</artifactId>
         </dependency>
     </dependencies>
+
+
 </project>

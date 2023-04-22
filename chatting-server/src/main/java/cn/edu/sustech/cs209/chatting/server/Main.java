@@ -1,17 +1,17 @@
 package cn.edu.sustech.cs209.chatting.server;
 
-import cn.edu.sustech.cs209.chatting.client.CustomItem;
 import cn.edu.sustech.cs209.chatting.common.Message;
-import javafx.fxml.FXML;
-import javafx.scene.control.ListView;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+
+
+
 public class Main {
-    private static final int PORT = 12345;
+    private static final int PORT = 5005;
     private static Map<String, ObjectOutputStream> users = new ConcurrentHashMap<>();
     private static List<String> UserList = new ArrayList<>();
 
@@ -37,9 +37,11 @@ public class Main {
         public Handler(Socket socket) {
             this.socket = socket;
             try {
-                out = new ObjectOutputStream(socket.getOutputStream());
-                out.flush();
                 in = new ObjectInputStream(socket.getInputStream());
+                //in.readObject();
+                out = new ObjectOutputStream(socket.getOutputStream());
+               // out.writeObject(new String());
+                out.flush();
 
             } catch (IOException e) {
                 System.out.println("Error initializing streams: " + e.getMessage());
@@ -80,20 +82,21 @@ public class Main {
                         System.out.println("Invalid object");
                     }
                     if (input == null) {
-                        break;
+                        continue;
                     }
 
                     if (input instanceof String) {
                         handleStringMessage((String) input);
                     } else if (input instanceof Message) {
-                        handleMessage((Message) input);
+                        Message message = (Message) input;
+                        handleMessage(message);
                     } else {
                         System.out.println("Error: Invalid message format.");
                     }
                 }
 
             } catch (IOException e) {
-                System.out.println("Error: " + e.getMessage());
+                System.out.println("Error:zxc " + e.getMessage());
             } finally {
                 if (username != null) {
                     users.remove(username);
@@ -101,7 +104,7 @@ public class Main {
                 try {
                     socket.close();
                 } catch (IOException e) {
-                    System.out.println("Error: " + e.getMessage());
+                    System.out.println("Error:12231 " + e.getMessage());
                 }
             }
         }
@@ -128,13 +131,20 @@ public class Main {
             String targetUsername = message.getSendTo();
             ObjectOutputStream targetWriter = users.get(targetUsername);
             if (targetWriter != null) {
-                targetWriter.writeObject(message);
+                targetWriter.reset();
+                targetWriter.writeObject(message.toString());
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + targetUsername + " not found.");
             }
         }
 
+
+//        public String convertObjectToJson(Object object) {
+//            Gson gson = new Gson();
+//            String json = gson.toJson(object);
+//            return json;
+//        }
 
 
 
