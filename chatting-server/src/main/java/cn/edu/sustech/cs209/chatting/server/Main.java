@@ -114,13 +114,15 @@ public class Main {
                 sendUserList();
             } else {
                 username = messageContent;
-                System.out.println("Welcome, " + username + "! You can now start chatting.");
-                for (ObjectOutputStream writer : users.values()) {
-                    if (writer != out) {
-                        writer.writeObject(username + " has joined the chat.");
-                    }
+//                for (ObjectOutputStream writer : users.values()) {
+//                    if (writer != out) {
+//                        writer.writeObject(username + " has joined the chat.");
+//                    }
+//                }
+                if (!UserList.contains(username)) {
+                   UserList.add(username);
+                    System.out.println("Welcome, " + username + "! You can now start chatting.");
                 }
-                UserList.add(username);
                 if (!users.containsKey(username)) {
                     users.put(username, out);
                 }

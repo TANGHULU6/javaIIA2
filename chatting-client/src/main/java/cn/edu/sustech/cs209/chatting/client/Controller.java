@@ -2,6 +2,7 @@ package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -29,6 +30,7 @@ public class Controller implements Initializable {
     Label currentUsername;
     String username;
     String otherUser;
+    List<String> userList;
     @FXML
     private TextArea inputArea;
     @FXML
@@ -55,15 +57,24 @@ public class Controller implements Initializable {
              */
 
             username = input.get();
-            currentUsername.setText("Current User: " + username);
-            connectToServer();
-            chatList.setOnMouseClicked(event -> {
-                CustomItem selectedItem = chatList.getSelectionModel().getSelectedItem();
-                if (selectedItem != null) {
-                    switchToChat(selectedItem);
-                }
-            });
-
+            if(userList!=null&&userList.contains(username)){
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Information Dialog");
+                alert.setHeaderText(null);
+                alert.setContentText("change the username");
+                alert.showAndWait();
+                Platform.exit();
+                return;
+            }else {
+                currentUsername.setText("Current User: " + username);
+                connectToServer();
+                chatList.setOnMouseClicked(event -> {
+                    CustomItem selectedItem = chatList.getSelectionModel().getSelectedItem();
+                    if (selectedItem != null) {
+                        switchToChat(selectedItem);
+                    }
+                });
+            }
 
         } else {
             System.out.println("Invalid username " + input + ", exiting");
@@ -176,16 +187,10 @@ public class Controller implements Initializable {
 
                     userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
                     String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
-                    List<String> userList = Arrays.asList(userArray);
-                    System.out.println(userList);
-                    // Convert the String array to a List of CustomItem objects
-                    customItems.addAll(userList.stream()
-                            .map(CustomItem::new).toList());
+                    userList = Arrays.asList(userArray);
+                    customItems.addAll(userList.stream().map(CustomItem::new).toList());
+                    System.out.println(customItems.stream().map(s->s.getText()).toList());
                     break;
-
-
-
-
             }
         }).start();
 
@@ -194,14 +199,39 @@ public class Controller implements Initializable {
 
 
 
+    private final Object userListLock = new Object();
+
     private void updateUserList() {
-        List<CustomItem> userList = requestUserList(socket);
-        Platform.runLater(() -> {
-            chatList.getItems().clear();
-            chatList.getItems().addAll(userList.stream()
-                    .filter(item -> !item.getText().equals(username)).toList());
+        Task<List<CustomItem>> task = new Task<List<CustomItem>>() {
+            @Override
+            protected List<CustomItem> call() throws Exception {
+                return requestUserList(socket);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            List<CustomItem> userList = task.getValue();
+            Platform.runLater(() -> {
+                synchronized (userListLock) {
+                    System.out.println("Clearing chatList items...");
+                    chatList.getItems().clear();
+                    System.out.println("Adding new chatList items...");
+                    System.out.println(userList);
+                    chatList.getItems().addAll(userList.stream()
+                            .filter(item -> !item.getText().equals(username)).toList());
+                    chatList.getItems().add(new CustomItem("test"));
+                    System.out.println("Added new chatList items");
+
+                }
+            });
+
         });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
+
 
 
     private List<String> getSelectedUsers() {
@@ -226,8 +256,7 @@ public class Controller implements Initializable {
 
         // FIXME: get the user list from server, the current user's name should be filtered out
 
-        List<CustomItem> customItems = new ArrayList<>();
-        customItems = requestUserList(socket);
+        List<CustomItem> customItems = requestUserList(socket);
         userSel.getItems().addAll(customItems.stream().map(CustomItem::getText).toList());
 
         Button okBtn = new Button("OK");
