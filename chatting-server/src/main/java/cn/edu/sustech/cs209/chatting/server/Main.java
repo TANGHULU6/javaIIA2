@@ -18,9 +18,20 @@ public class Main {
     public static void main(String[] args) {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server is listening on port " + PORT);
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println("Server is shutting down...");
+                try {
+                    for (ObjectOutputStream out : users.values()) {
+                        out.writeObject("QUIT");
+                        out.flush();
+                    }
+                } catch (IOException e) {
+                    System.out.println("Error sending shutdown message: " + e.getMessage());
+                }
+            }));
             while (true) {
                 Socket socket = serverSocket.accept();
-                UserList.add("God");
+//                UserList.add("God");
                 new Handler(socket).start();
             }
         } catch (IOException e) {
@@ -49,27 +60,33 @@ public class Main {
         }
 
         private void sendUserList() throws IOException {
-            handleMessage(new Message(System.currentTimeMillis(),"God",username,UserList.toString()));
+            ObjectOutputStream targetWriter = users.get(username);
+            if (targetWriter != null) {
+                targetWriter.reset();
+                targetWriter.writeUTF(UserList.toString());
+                targetWriter.flush();
+            } else {
+                System.out.println("Error: User " + username + " not found.");
+            }
         }
 
-//        private void sendMessageToUser(Object message) throws IOException {
-//            String messageContent;
-//
-//            if (message instanceof Message) {
-//                Message msgObj = (Message) message;
-//                username=msgObj.getSendTo();
-//                ObjectOutputStream targetWriter = users.get(username);
-//                if (targetWriter != null) {
-//                    targetWriter.writeObject(msgObj);
-//                } else {
-//                    System.out.println("Error: User " + username + " not found.");
-//                }
-//            } else {
-//                System.out.println("Error: Invalid message format.");
-//                return;
-//            }
-//
-//        }
+        private void sendMessageToUser(Object message) throws IOException {
+            String messageContent;
+
+            if (message instanceof Message) {
+                Message msgObj = (Message) message;
+                username=msgObj.getSendTo();
+                ObjectOutputStream targetWriter = users.get(username);
+                if (targetWriter != null) {
+                    targetWriter.writeObject(msgObj);
+                } else {
+                    System.out.println("Error: User " + username + " not found.");
+                }
+            } else {
+                System.out.println("Error: Invalid message format.");
+            }
+
+        }
 
 
         public void run() {
@@ -84,12 +101,16 @@ public class Main {
                     if (input == null) {
                         continue;
                     }
-
+                    System.out.println("not null");
                     if (input instanceof String) {
-                        handleStringMessage((String) input);
-                    } else if (input instanceof Message) {
-                        Message message = (Message) input;
-                        handleMessage(message);
+                        if(input.toString().endsWith("@")){
+                            handleMessage(fromString(input.toString()));
+                            System.out.println("Server is passing..."+input);
+                        }else {
+                            handleStringMessage(input.toString());
+                            System.out.println("Server is processing..."+input);
+                        }
+
                     } else {
                         System.out.println("Error: Invalid message format.");
                     }
@@ -134,7 +155,7 @@ public class Main {
             ObjectOutputStream targetWriter = users.get(targetUsername);
             if (targetWriter != null) {
                 targetWriter.reset();
-                targetWriter.writeObject(message.toString());
+                targetWriter.writeUTF(toString(message)+"@");
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + targetUsername + " not found.");
@@ -148,7 +169,25 @@ public class Main {
 //            return json;
 //        }
 
-
+        public static Message fromString(String stro) {
+            String str=stro.substring(0,stro.length()-1);
+            String[] parts = str.split("\\|");
+            if (parts.length != 4) {
+                throw new IllegalArgumentException("Invalid message format: " + str);
+            }
+            try {
+                Long timestamp = Long.parseLong(parts[0]);
+                String sentBy = parts[1];
+                String sendTo = parts[2];
+                String data = parts[3];
+                return new Message(timestamp, sentBy, sendTo, data);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid message format: " + str, e);
+            }
+        }
+        public static String toString(Message message){
+            return message.getTimestamp()+"|"+message.getSentBy()+"|"+message.getSendTo()+"|"+message.getData();
+        }
 
     }
 }
