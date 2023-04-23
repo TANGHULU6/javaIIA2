@@ -63,7 +63,7 @@ public class Main {
             ObjectOutputStream targetWriter = users.get(username);
             if (targetWriter != null) {
                 targetWriter.reset();
-                targetWriter.writeUTF(UserList.toString());
+                targetWriter.writeObject(UserList.toString());
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + username + " not found.");
@@ -155,7 +155,7 @@ public class Main {
             ObjectOutputStream targetWriter = users.get(targetUsername);
             if (targetWriter != null) {
                 targetWriter.reset();
-                targetWriter.writeUTF(toString(message)+"@");
+                targetWriter.writeObject(toString(message)+"@");
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + targetUsername + " not found.");

@@ -237,9 +237,9 @@ public class Controller implements Initializable {
         List<CustomItem> customItems=new ArrayList<>();
         Thread updateUserListThread = new Thread(() -> {
             try {
-                out.writeUTF(username);
+                out.writeObject(username);
                 out.flush();
-                out.writeUTF("USERLIST");
+                out.writeObject("USERLIST");
                 out.flush();
 
             } catch (IOException e) {
@@ -407,7 +407,7 @@ public class Controller implements Initializable {
             // TODO: Send the message to the server.
             try {
                 System.out.println(toString(msg));
-                out.writeUTF(toString(msg)+"@");
+                out.writeObject(toString(msg)+"@");
                 out.flush();
             } catch (IOException e) {
                 System.out.println("send illegal message");
