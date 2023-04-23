@@ -19,7 +19,7 @@
       fx:controller="cn.edu.sustech.cs209.chatting.client.Controller">
     <MenuBar VBox.vgrow="NEVER">
         <Menu mnemonicParsing="false" text="Chat">
-            <MenuItem mnemonicParsing="false" onAction="#QUIT" text="New Private Chat"/>
+            <MenuItem mnemonicParsing="false" onAction="#QUIT" text="log out"/>
             <MenuItem mnemonicParsing="false" onAction="#createGroupChat" text="New Group Chat"/>
         </Menu>
     </MenuBar>

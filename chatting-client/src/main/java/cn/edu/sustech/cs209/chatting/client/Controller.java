@@ -145,25 +145,26 @@ public class Controller implements Initializable {
 
 
 
-    private void openChatWindow(String username) {
-        Stage chatWindow = new Stage();
-        chatWindow.setTitle("Chat with " + username);
+    private void openChatWindow(List<String> member) {
+        member.add(username);
+        String t=member.toString().replaceAll(",","/");
+        CustomItem group=new CustomItem("#"+t);
+        try {
+            out.writeObject("#"+t);
+            out.flush();
+            Platform.runLater(()-> {
+                try {
+                    updateUserList();
+                    switchToChat(group);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
 
-        VBox layout = new VBox(10);
-        layout.setPadding(new Insets(10));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        ListView<String> messagesList = new ListView<>();
-        TextField messageInput = new TextField();
-        Button sendButton = new Button("Send");
-
-        sendButton.setOnAction(e -> {
-            // TODO: Implement sending messages to the selected user
-            doSendMessage();
-        });
-
-        layout.getChildren().addAll(messagesList, messageInput, sendButton);
-        chatWindow.setScene(new Scene(layout, 300, 400));
-        chatWindow.show();
     }
 
 
@@ -210,23 +211,38 @@ public class Controller implements Initializable {
                     chatContentList.getItems().add(msg);
                 }   );
             }else {
-                userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
-                String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
-                userList = Arrays.asList(userArray);
-                customItems.addAll(userList.stream().map(CustomItem::new).toList());
-                System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
+                if(userListStr.startsWith("#")){
+                    String finalUserListStr = userListStr;
+                    Platform.runLater(() -> {
+                        synchronized (userListLock) {
+                            System.out.println("Clearing chatList items...");
+                            chatList.getItems().clear();
+                            System.out.println("Adding new chatList items...");
+                            chatList.getItems().add(new CustomItem(finalUserListStr));
+                            //chatList.getItems().add(new CustomItem("test"));
+                            System.out.println("Added new chatList items");
+                        }
+                    });
+                }else {
+                    userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
+                    String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+                    userList = Arrays.asList(userArray);
+                    customItems.addAll(userList.stream().map(CustomItem::new).toList());
+                    System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
 
-                Platform.runLater(() -> {
-                    synchronized (userListLock) {
-                        System.out.println("Clearing chatList items...");
-                        chatList.getItems().clear();
-                        System.out.println("Adding new chatList items...");
-                        chatList.getItems().addAll(customItems.stream()
-                                .filter(item -> !item.getText().equals(username)).toList());
-                        //chatList.getItems().add(new CustomItem("test"));
-                        System.out.println("Added new chatList items");
-                    }
-                });
+                    Platform.runLater(() -> {
+                        synchronized (userListLock) {
+                            System.out.println("Clearing chatList items...");
+                            chatList.getItems().clear();
+                            System.out.println("Adding new chatList items...");
+                            chatList.getItems().addAll(customItems.stream()
+                                    .filter(item -> !item.getText().equals(username)).toList());
+                            //chatList.getItems().add(new CustomItem("test"));
+                            System.out.println("Added new chatList items");
+                        }
+                    });
+                }
+
             }
 
         });
@@ -303,7 +319,7 @@ public void QUIT(){
         Optional<List<String>> result = dialog.showAndWait();
         if (result.isPresent()) {
             List<String> group = result.get();
-            openChatWindow(group.toString());
+            openChatWindow(group);
         }
 
 
@@ -336,6 +352,8 @@ public void QUIT(){
             chatContentList.getItems().add(msg);
             // Clear the input field.
             inputArea.clear();
+        }else {
+            System.out.println("Cannot send null text");
         }
     }
 //    private void startListeningForMessages() {

@@ -39,4 +39,9 @@ public class CustomItem extends HBox {
     public String getText() {
         return label.getText();
     }
+
+    @Override
+    public String toString() {
+        return this.getText();
+    }
 }
