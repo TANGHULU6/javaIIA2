@@ -1,5 +1,6 @@
 package cn.edu.sustech.cs209.chatting.server;
 
+import cn.edu.sustech.cs209.chatting.client.ConversationKey;
 import cn.edu.sustech.cs209.chatting.common.Message;
 
 import java.io.*;
@@ -14,6 +15,7 @@ public class Main {
     private static final int PORT = 5005;
     private static Map<String, ObjectOutputStream> users = new ConcurrentHashMap<>();
     private static List<String> UserList = new ArrayList<>();
+    private Map<ConversationKey, List<Message>> chatHistory_Server = new HashMap<>();
 
     public static void main(String[] args) {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -69,25 +71,6 @@ public class Main {
                 System.out.println("Error: User " + username + " not found.");
             }
         }
-
-        private void sendMessageToUser(Object message) throws IOException {
-            String messageContent;
-
-            if (message instanceof Message) {
-                Message msgObj = (Message) message;
-                username=msgObj.getSendTo();
-                ObjectOutputStream targetWriter = users.get(username);
-                if (targetWriter != null) {
-                    targetWriter.writeObject(msgObj);
-                } else {
-                    System.out.println("Error: User " + username + " not found.");
-                }
-            } else {
-                System.out.println("Error: Invalid message format.");
-            }
-
-        }
-
 
         public void run() {
             try {
