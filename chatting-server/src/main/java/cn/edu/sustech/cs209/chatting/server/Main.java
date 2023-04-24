@@ -94,7 +94,13 @@ public class Main {
 
                             System.out.println("Server is passing..."+input);
                         }else {
-                            handleStringMessage(input.toString());
+                            if((input.toString()).endsWith("~")){
+                                String dead=input.toString().substring(0,input.toString().length()-1);
+
+                            }else {
+                                handleStringMessage(input.toString());
+                            }
+
                             System.out.println("Server is processing..."+input);
                         }
 

@@ -13,10 +13,12 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+//import org.apache.commons.text.StringEscapeUtils;
 
 import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,6 +35,7 @@ public class Controller implements Initializable {
     String username;
     String otherUser;
     List<String> userList;
+    List<String> OnlineUserList;
     @FXML
     private TextArea inputArea;
     @FXML
@@ -42,7 +45,7 @@ public class Controller implements Initializable {
     private ObjectInputStream in;
     private ObjectOutputStream out;
     private Map<ConversationKey, List<Message>> chatHistory = new HashMap<>();
-    private MessageListener messageListener;
+    //private MessageListener messageListener;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -59,6 +62,7 @@ public class Controller implements Initializable {
              */
 
             username = input.get();
+            connectToServer();
             if(userList!=null&&userList.contains(username)){
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Information Dialog");
@@ -66,10 +70,9 @@ public class Controller implements Initializable {
                 alert.setContentText("change the username");
                 alert.showAndWait();
                 Platform.exit();
-                return;
             }else {
                 currentUsername.setText("Current User: " + username);
-                connectToServer();
+
                 chatList.setOnMouseClicked(event -> {
                     CustomItem selectedItem = chatList.getSelectionModel().getSelectedItem();
                     if (selectedItem != null) {
@@ -96,19 +99,20 @@ public class Controller implements Initializable {
             out.flush();
             in = new ObjectInputStream(socket.getInputStream());
             //in.readObject();
-            messageListener = new MessageListener( in,chatContentList,username,otherUser);
+            //messageListener = new MessageListener( in,chatContentList,username,otherUser);
 
             new Thread(() -> {
                 while (true) {
                     try {
-                        messageListener.stop();
-                        if (messageListener.isRunning()) {
-                            Thread.sleep(1000);
-                        }
-                        System.out.println("stop listening");
+//                        messageListener.stop();
+//                        if (messageListener.isRunning()) {
+//                            Thread.sleep(1000);
+//                        }
+                       // System.out.println("stop listening");
                         updateUserList();
-                        startListeningForMessages(messageListener);
-                        System.out.println("start listening");
+                        updateOnlineStatus(OnlineUserList,chatList);
+                        //startListeningForMessages(messageListener);
+                       // System.out.println("start listening");
                         Thread.sleep(10000); // Sleep for 10 seconds
 
                     } catch (InterruptedException e) {
@@ -123,17 +127,17 @@ public class Controller implements Initializable {
 
     private void switchToChat(CustomItem selectedItem) {
         otherUser = selectedItem.getText();
-        if (messageListener != null) {
-            messageListener.stop();
-        }
+//        if (messageListener != null) {
+//            messageListener.stop();
+//        }
         ConversationKey key = new ConversationKey(username, otherUser);
         List<Message> chatContent = chatHistory.getOrDefault(key, new ArrayList<>());
 
         chatContentList.getItems().clear();
         chatContentList.getItems().addAll(chatContent);
 
-        messageListener = new MessageListener(in, chatContentList, username, otherUser);
-        startListeningForMessages(messageListener);
+//        messageListener = new MessageListener(in, chatContentList, username, otherUser);
+//        startListeningForMessages(messageListener);
     }
 
     private void addMessageToHistory(String sender, String recipient, Message message) {
@@ -175,10 +179,24 @@ public class Controller implements Initializable {
         List<CustomItem> customItems=new ArrayList<>();
         Thread updateUserListThread = new Thread(() -> {
             try {
-                out.writeObject(username);
-                out.flush();
-                out.writeObject("USERLIST");
-                out.flush();
+                try{
+                    out.writeObject(username);
+                    out.flush();
+                    out.writeObject("USERLIST");
+                    out.flush();
+                }catch (SocketException e){
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("New message received");
+                        alert.setHeaderText(null);
+                        alert.setContentText("Server is shutting down...");
+                        alert.showAndWait();
+
+                    });
+
+                }
+
+
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -203,45 +221,68 @@ public class Controller implements Initializable {
             if (receivedObject != null) {
                 userListStr = receivedObject.toString();
             } else userListStr = "[error]";
-            if(userListStr.endsWith("@")){
-                System.out.println(userListStr);
-                Message msg = fromString(userListStr);
-                Platform.runLater(() ->  {
-                    addMessageToHistory(username,otherUser,msg);
-                    chatContentList.getItems().add(msg);
-                }   );
-            }else {
-                if(userListStr.startsWith("#")){
-                    String finalUserListStr = userListStr;
-                    Platform.runLater(() -> {
-                        synchronized (userListLock) {
-                            System.out.println("Clearing chatList items...");
-                            chatList.getItems().clear();
-                            System.out.println("Adding new chatList items...");
-                            chatList.getItems().add(new CustomItem(finalUserListStr));
-                            //chatList.getItems().add(new CustomItem("test"));
-                            System.out.println("Added new chatList items");
-                        }
-                    });
-                }else {
-                    userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
-                    String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
-                    userList = Arrays.asList(userArray);
-                    customItems.addAll(userList.stream().map(CustomItem::new).toList());
-                    System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
+            if(userListStr.equals("QUIT")){
+                Platform.runLater(() -> {
+                    // Update the UI with the received message.
+                    // You can use the chatContentList and update it with the new message.
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("New message received");
+                    alert.setHeaderText(null);
+                    alert.setContentText("Server is shutting down...");
+                    alert.showAndWait();
 
-                    Platform.runLater(() -> {
-                        synchronized (userListLock) {
-                            System.out.println("Clearing chatList items...");
-                            chatList.getItems().clear();
-                            System.out.println("Adding new chatList items...");
-                            chatList.getItems().addAll(customItems.stream()
-                                    .filter(item -> !item.getText().equals(username)).toList());
-                            //chatList.getItems().add(new CustomItem("test"));
-                            System.out.println("Added new chatList items");
-                        }
-                    });
-                }
+                });
+                Platform.exit();
+            }else {
+                if(userListStr.endsWith("@")){
+                    System.out.println(userListStr);
+                    //String decodedMessage = StringEscapeUtils.unescapeJava(userListStr);
+
+                    Message msg = fromString(userListStr);
+                    addMessageToHistory(username,msg.getSentBy(),msg);
+                    Platform.runLater(() ->  {
+                        chatContentList.getItems().add(msg);
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("New message received");
+                        alert.setHeaderText(null);
+                        alert.setContentText("You have a new message");
+                        alert.showAndWait();
+                    }   );
+                }else {
+                    if(userListStr.startsWith("#")){
+                        String finalUserListStr = userListStr;
+                        Platform.runLater(() -> {
+                            synchronized (userListLock) {
+                                System.out.println("Clearing chatList items...");
+                                chatList.getItems().clear();
+                                System.out.println("Adding new chatList items...");
+                                chatList.getItems().add(new CustomItem(finalUserListStr));
+                                //chatList.getItems().add(new CustomItem("test"));
+                                System.out.println("Added new chatList items");
+                            }
+                        });
+                    }else {
+                        userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
+                        String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+                        userList = Arrays.asList(userArray);
+                        OnlineUserList  = Arrays.asList(userArray);
+                        customItems.addAll(userList.stream().map(CustomItem::new).toList());
+                        System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
+
+                        Platform.runLater(() -> {
+                            synchronized (userListLock) {
+                                System.out.println("Clearing chatList items...");
+                                chatList.getItems().clear();
+                                System.out.println("Adding new chatList items...");
+                                chatList.getItems().addAll(customItems.stream()
+                                        .filter(item -> !item.getText().equals(username)).toList());
+                                //chatList.getItems().add(new CustomItem("test"));
+                                System.out.println("Added new chatList items");
+                            }
+                        });
+                    }
+            }
+
 
             }
 
@@ -252,10 +293,16 @@ public class Controller implements Initializable {
 
     }
     public void updateOnlineStatus(List<String> onlineUsers,ListView<CustomItem> lll) {
-        for (CustomItem item : lll.getItems()) {
-            boolean online = onlineUsers.contains(item.getText());
-            item.setOnline(online);
-        }
+        Platform.runLater(()->{
+            if(onlineUsers==null){
+                return;
+            }
+            for (CustomItem item : lll.getItems()) {
+                boolean online = onlineUsers.contains(item.getText());
+                item.setOnline(online);
+            }
+        });
+
     }
 
 
@@ -269,8 +316,15 @@ public class Controller implements Initializable {
 
 
 @FXML
-public void QUIT(){
+public void QUIT() throws IOException {
 
+
+        out.writeObject(username+"~");
+        out.flush();
+    in.close();
+    out.close();
+    socket.close();
+    Platform.exit();
 }
 
 

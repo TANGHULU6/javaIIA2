@@ -32,9 +32,9 @@ public class MessageListener implements Runnable {
     @Override
     public void run() {
             while (isRunning) {
-                String message;
+                Object message;
                 try{
-                    message = in.readUTF();
+                    message = in.readObject();
                 }catch (Exception e){
                     continue;
                 }
@@ -49,7 +49,7 @@ public class MessageListener implements Runnable {
                                     chatContentList.getItems().add(msg);
                                 });
                             }else {
-                                if(message.endsWith("@")){
+                                if(((String) message).endsWith("@")){
                                     Platform.runLater(() -> {
                                         // Update the UI with the received message.
                                         // You can use the chatContentList and update it with the new message.
