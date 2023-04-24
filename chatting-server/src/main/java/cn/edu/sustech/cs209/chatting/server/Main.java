@@ -1,5 +1,6 @@
 package cn.edu.sustech.cs209.chatting.server;
 
+import cn.edu.sustech.cs209.chatting.client.Controller;
 import cn.edu.sustech.cs209.chatting.client.ConversationKey;
 import cn.edu.sustech.cs209.chatting.common.Message;
 
@@ -76,7 +77,7 @@ public class Main {
             ObjectOutputStream targetWriter = users.get(username);
             if (targetWriter != null) {
                 targetWriter.reset();
-                targetWriter.writeObject(OnlineUserList.toString());
+                targetWriter.writeObject(OnlineUserList.toString()+"check");
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + username + " not found.");
@@ -143,13 +144,8 @@ public class Main {
                 sendOnlineUserList();
             } else {
                 if(messageContent.startsWith("QUIT")){
-                    String sss=messageContent.replace("QUIT", "");
-                    users.remove(sss);
+                    String sss=messageContent.substring(4);
                     OnlineUserList.remove(sss);
-                    for (ObjectOutputStream out : users.values()) {
-                        out.writeObject(messageContent);
-                        out.flush();
-                    }
                 }else {
                     username = messageContent;
 //                for (ObjectOutputStream writer : users.values()) {

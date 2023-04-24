@@ -111,6 +111,7 @@ public class Controller implements Initializable {
 //                        }
                        // System.out.println("stop listening");
                         updateUserList();
+
                         //startListeningForMessages(messageListener);
                        // System.out.println("start listening");
                         Thread.sleep(10000); // Sleep for 10 seconds
@@ -183,6 +184,8 @@ public class Controller implements Initializable {
                     out.flush();
                     out.writeObject("USERLIST");
                     out.flush();
+                    out.writeObject("OUSERLIST");
+                    out.flush();
                 }catch (SocketException e){
                     Platform.runLater(() -> {
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -220,13 +223,6 @@ public class Controller implements Initializable {
             if (receivedObject != null) {
                 userListStr = receivedObject.toString();
             } else userListStr = "[error]";
-            if(userListStr.startsWith("QUIT")){
-                try {
-                    updateOnlineStatus(chatList);
-                } catch (IOException | ClassNotFoundException e) {
-                    System.out.println("Online update fail"+e.getMessage());
-                }
-            }else {
                 if(userListStr.endsWith("@")){
                     System.out.println(userListStr);
                     //String decodedMessage = StringEscapeUtils.unescapeJava(userListStr);
@@ -255,28 +251,46 @@ public class Controller implements Initializable {
                             }
                         });
                     }else {
-                        userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
-                        String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
-                        userList = Arrays.asList(userArray);
-                        customItems.addAll(userList.stream().map(CustomItem::new).toList());
-                        System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
+                        if(userListStr.endsWith("check")){
+                            userListStr = userListStr.substring(1, userListStr.length() - 6); // Remove the brackets
+                            String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+                            OnlineUserList = Arrays.asList(userArray);
+                            System.out.println("OnLineUser:"+OnlineUserList);
+                            Platform.runLater(()->{
+                                if(OnlineUserList==null){
+                                    return;
+                                }
+                                for (CustomItem item : chatList.getItems()) {
+                                    boolean online = OnlineUserList.contains(item.getText());
+                                    item.setOnline(online);
+                                }
+                            });
+                        }else {
+                            userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
+                            String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+                            userList = Arrays.asList(userArray);
+                            customItems.addAll(userList.stream().map(CustomItem::new).toList());
+                            System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
 
-                        Platform.runLater(() -> {
-                            synchronized (userListLock) {
-                                System.out.println("Clearing chatList items...");
-                                chatList.getItems().clear();
-                                System.out.println("Adding new chatList items...");
-                                chatList.getItems().addAll(customItems.stream()
-                                        .filter(item -> !item.getText().equals(username)).toList());
-                                //chatList.getItems().add(new CustomItem("test"));
-                                System.out.println("Added new chatList items");
-                            }
-                        });
+                            Platform.runLater(() -> {
+                                synchronized (userListLock) {
+                                    System.out.println("Clearing chatList items...");
+                                    chatList.getItems().clear();
+                                    System.out.println("Adding new chatList items...");
+                                    chatList.getItems().addAll(customItems.stream()
+                                            .filter(item -> !item.getText().equals(username)).toList());
+                                    //chatList.getItems().add(new CustomItem("test"));
+                                    System.out.println("Added new chatList items");
+                                }
+                            });
+                        }
+
+
                     }
             }
 
 
-            }
+
 
         });
         updateUserListThread.start();
