@@ -15,6 +15,7 @@ public class Main {
     private static final int PORT = 5005;
     private static Map<String, ObjectOutputStream> users = new ConcurrentHashMap<>();
     private static List<String> UserList = new ArrayList<>();
+    private static List<String> OnlineUserList=new ArrayList<>();
     private Map<ConversationKey, List<Message>> chatHistory_Server = new HashMap<>();
 
     public static void main(String[] args) {
@@ -71,6 +72,16 @@ public class Main {
                 System.out.println("Error: User " + username + " not found.");
             }
         }
+        private void sendOnlineUserList() throws IOException {
+            ObjectOutputStream targetWriter = users.get(username);
+            if (targetWriter != null) {
+                targetWriter.reset();
+                targetWriter.writeObject(OnlineUserList.toString());
+                targetWriter.flush();
+            } else {
+                System.out.println("Error: User " + username + " not found.");
+            }
+        }
 
         public void run() {
             try {
@@ -96,7 +107,7 @@ public class Main {
                         }else {
                             if((input.toString()).endsWith("~")){
                                 String dead=input.toString().substring(0,input.toString().length()-1);
-
+                                handleStringMessage("QUIT"+dead);
                             }else {
                                 handleStringMessage(input.toString());
                             }
@@ -126,21 +137,37 @@ public class Main {
         private void handleStringMessage(String messageContent) throws IOException {
             if (messageContent.equals("USERLIST")) {
                 sendUserList();
+                return;
+            }
+            if (messageContent.equals("OUSERLIST")) {
+                sendOnlineUserList();
             } else {
-                username = messageContent;
+                if(messageContent.startsWith("QUIT")){
+                    String sss=messageContent.replace("QUIT", "");
+                    users.remove(sss);
+                    OnlineUserList.remove(sss);
+                    for (ObjectOutputStream out : users.values()) {
+                        out.writeObject(messageContent);
+                        out.flush();
+                    }
+                }else {
+                    username = messageContent;
 //                for (ObjectOutputStream writer : users.values()) {
 //                    if (writer != out) {
 //                        writer.writeObject(username + " has joined the chat.");
 //                    }
 //                }
-                if (!UserList.contains(username)) {
-                   UserList.add(username);
-                    System.out.println("Welcome, " + username + "! You can now start chatting.");
+                    if (!UserList.contains(username)) {
+                        UserList.add(username);
+                        OnlineUserList.add(username);
+                        System.out.println("Welcome, " + username + "! You can now start chatting.");
+                    }
+                    if (!users.containsKey(username)) {
+                        users.put(username, out);
+                    }
+                    }
                 }
-                if (!users.containsKey(username)) {
-                    users.put(username, out);
-                }
-            }
+
         }
 
         private void handleMessage(Message message) throws IOException {

@@ -101,6 +101,7 @@ public class Controller implements Initializable {
             //in.readObject();
             //messageListener = new MessageListener( in,chatContentList,username,otherUser);
 
+
             new Thread(() -> {
                 while (true) {
                     try {
@@ -110,7 +111,6 @@ public class Controller implements Initializable {
 //                        }
                        // System.out.println("stop listening");
                         updateUserList();
-                        updateOnlineStatus(OnlineUserList,chatList);
                         //startListeningForMessages(messageListener);
                        // System.out.println("start listening");
                         Thread.sleep(10000); // Sleep for 10 seconds
@@ -186,7 +186,7 @@ public class Controller implements Initializable {
                 }catch (SocketException e){
                     Platform.runLater(() -> {
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                        alert.setTitle("New message received");
+                        alert.setTitle("Please quit");
                         alert.setHeaderText(null);
                         alert.setContentText("Server is shutting down...");
                         alert.showAndWait();
@@ -220,18 +220,12 @@ public class Controller implements Initializable {
             if (receivedObject != null) {
                 userListStr = receivedObject.toString();
             } else userListStr = "[error]";
-            if(userListStr.equals("QUIT")){
-                Platform.runLater(() -> {
-                    // Update the UI with the received message.
-                    // You can use the chatContentList and update it with the new message.
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("New message received");
-                    alert.setHeaderText(null);
-                    alert.setContentText("Server is shutting down...");
-                    alert.showAndWait();
-
-                });
-                Platform.exit();
+            if(userListStr.startsWith("QUIT")){
+                try {
+                    updateOnlineStatus(chatList);
+                } catch (IOException | ClassNotFoundException e) {
+                    System.out.println("Online update fail"+e.getMessage());
+                }
             }else {
                 if(userListStr.endsWith("@")){
                     System.out.println(userListStr);
@@ -264,7 +258,6 @@ public class Controller implements Initializable {
                         userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
                         String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
                         userList = Arrays.asList(userArray);
-                        OnlineUserList  = Arrays.asList(userArray);
                         customItems.addAll(userList.stream().map(CustomItem::new).toList());
                         System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
 
@@ -291,13 +284,38 @@ public class Controller implements Initializable {
 
 
     }
-    public void updateOnlineStatus(List<String> onlineUsers,ListView<CustomItem> lll) {
+    public void updateOnlineStatus(ListView<CustomItem> lll) throws IOException, ClassNotFoundException {
+        out.writeObject("OUSERLIST");
+        out.flush();
+        in.readObject();
+        Object receivedObject = null;
+        try {
+            receivedObject = in.readObject();
+        } catch (ClassNotFoundException | IOException e) {
+            System.out.println("Received error object"+receivedObject);
+        }
+
+        if (receivedObject == null) {
+            System.out.println("Received null object");
+        } else {
+            System.out.println("Received object: " + receivedObject+ receivedObject.getClass());
+
+        }
+
+        String userListStr;
+        if (receivedObject != null) {
+            userListStr = receivedObject.toString();
+        } else userListStr = "[error]";
+        userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
+        String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+        OnlineUserList = Arrays.asList(userArray);
+        System.out.println(OnlineUserList);
         Platform.runLater(()->{
-            if(onlineUsers==null){
+            if(OnlineUserList==null){
                 return;
             }
             for (CustomItem item : lll.getItems()) {
-                boolean online = onlineUsers.contains(item.getText());
+                boolean online = OnlineUserList.contains(item.getText());
                 item.setOnline(online);
             }
         });
