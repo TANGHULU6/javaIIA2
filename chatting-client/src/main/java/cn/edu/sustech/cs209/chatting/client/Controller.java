@@ -159,7 +159,6 @@ public class Controller implements Initializable {
             Platform.runLater(()-> {
                 try {
                     updateUserList();
-                    switchToChat(group);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -403,7 +402,7 @@ public void QUIT() throws IOException {
             }
 
             addMessageToHistory(username,otherUser,msg);
-            chatContentList.getItems().add(msg);
+            //chatContentList.getItems().add(msg);
             // Clear the input field.
             inputArea.clear();
         }else {
@@ -498,7 +497,7 @@ private void startListeningForMessages(MessageListener messageListener) {
                     Label nameLabel = new Label(msg.getSentBy());
                     Label msgLabel = new Label(msg.getData());
 
-                    nameLabel.setPrefSize(50, 20);
+                    nameLabel.setPrefSize(250, 20);
                     nameLabel.setWrapText(true);
                     nameLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
 

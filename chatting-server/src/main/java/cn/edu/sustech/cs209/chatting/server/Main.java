@@ -156,13 +156,15 @@ public class Main {
         }
         private void handleGroupMessage(Message message) throws IOException {
             String targetUsername = message.getSendTo();
-            String userListStr = targetUsername.substring(1);
+            String userListStrTemp = targetUsername.substring(1);
+            String userListStr = userListStrTemp.substring(1,userListStrTemp.length()-1);
             String[] userArray = userListStr.split("/ ");
             List<String>userList = Arrays.asList(userArray);
             userList.stream().forEach(uu->{
                 ObjectOutputStream targetWriter = users.get(uu);
                 if (targetWriter != null) {
                     try {
+                        //Message message1=new Message(message.getTimestamp(),message.getSentBy(),message.getSendTo(),message.getSentBy()+":"+message.getData());
                         targetWriter.reset();
                         targetWriter.writeObject(toString(message)+"@");
                         targetWriter.flush();
