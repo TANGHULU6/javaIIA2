@@ -87,7 +87,11 @@ public class Main {
                     System.out.println("not null");
                     if (input instanceof String) {
                         if(input.toString().endsWith("@")){
-                            handleMessage(fromString(input.toString()));
+                            Message m=fromString(input.toString());
+                            if(m.getSendTo().startsWith("#")){
+                                handleGroupMessage(m);
+                            }else handleMessage(m);
+
                             System.out.println("Server is passing..."+input);
                         }else {
                             handleStringMessage(input.toString());
@@ -144,7 +148,29 @@ public class Main {
                 System.out.println("Error: User " + targetUsername + " not found.");
             }
         }
+        private void handleGroupMessage(Message message) throws IOException {
+            String targetUsername = message.getSendTo();
+            String userListStr = targetUsername.substring(1);
+            String[] userArray = userListStr.split("/ ");
+            List<String>userList = Arrays.asList(userArray);
+            userList.stream().forEach(uu->{
+                ObjectOutputStream targetWriter = users.get(uu);
+                if (targetWriter != null) {
+                    try {
+                        targetWriter.reset();
+                        targetWriter.writeObject(toString(message)+"@");
+                        targetWriter.flush();
+                    } catch (IOException e) {
+                        System.out.println("Error: User " + uu + message+" group chat error");
+                        e.printStackTrace();
+                    }
 
+                } else {
+                    System.out.println("Error: User " + uu + " not found.");
+                }
+            });
+
+        }
 
 //        public String convertObjectToJson(Object object) {
 //            Gson gson = new Gson();
