@@ -1,6 +1,7 @@
 package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
+import com.vdurmont.emoji.EmojiParser;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -11,6 +12,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
@@ -29,6 +31,8 @@ import java.util.stream.Collectors;
 
 
 
+
+
 public class Controller implements Initializable {
 
     @FXML
@@ -43,6 +47,7 @@ public class Controller implements Initializable {
     private TextArea inputArea;
     @FXML
     ListView<CustomItem> chatList;
+
     Socket socket;
 
     private ObjectInputStream in;
@@ -94,6 +99,7 @@ public class Controller implements Initializable {
     private void connectToServer() {
         String serverAddress = "127.0.0.1";
         int port = 5005;
+
 
         try {
             socket = new Socket(serverAddress, port);
@@ -147,7 +153,10 @@ public class Controller implements Initializable {
     private void addMessageToHistory(String sender, String recipient, Message message) {
         ConversationKey key = new ConversationKey(sender, recipient);
         List<Message> conversation = chatHistory.getOrDefault(key, new ArrayList<>());
-        conversation.add(message);
+        String unicode = message.getData();
+        String emoji = EmojiParser.parseToUnicode(unicode);
+        Message message1=new Message(message.getTimestamp(),message.getSentBy(),message.getSendTo(),emoji);
+        conversation.add(message1);
         chatHistory.put(key, conversation);
     }
 
@@ -262,21 +271,21 @@ public class Controller implements Initializable {
                             }
                         });
                     }else {
-//                        if(userListStr.endsWith("check")){
-//                            userListStr = userListStr.substring(1, userListStr.length() - 6); // Remove the brackets
-//                            String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
-//                            OnlineUserList = Arrays.asList(userArray);
-//                            System.out.println("OnLineUser:"+OnlineUserList);
-//                            Platform.runLater(()->{
-//                                if(OnlineUserList==null){
-//                                    return;
-//                                }
-//                                for (CustomItem item : chatList.getItems()) {
-//                                    boolean online = OnlineUserList.contains(item.getText());
-//                                    item.setOnline(online);
-//                                }
-//                            });
-//                        }else
+                        if(userListStr.endsWith("check")){
+                            userListStr = userListStr.substring(1, userListStr.length() - 6); // Remove the brackets
+                            String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+                            OnlineUserList = Arrays.asList(userArray);
+                            System.out.println("OnLineUser:"+OnlineUserList);
+                            Platform.runLater(()->{
+                                if(OnlineUserList==null){
+                                    return;
+                                }
+                                for (CustomItem item : chatList.getItems()) {
+                                    boolean online = OnlineUserList.contains(item.getText());
+                                    item.setOnline(online);
+                                }
+                            });
+                        }else
                         {
                             userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
                             String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
@@ -544,6 +553,8 @@ private void startListeningForMessages(MessageListener messageListener) {
                     nameLabel.setPrefSize(250, 20);
                     nameLabel.setWrapText(true);
                     nameLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
+                    Font emojiFont = Font.font("Noto Color Emoji", 14);
+                    msgLabel.setFont(emojiFont);
 
                     if (username.equals(msg.getSentBy())) {
                         wrapper.setAlignment(Pos.TOP_RIGHT);

@@ -1,14 +1,15 @@
 package cn.edu.sustech.cs209.chatting.server;
 
-import cn.edu.sustech.cs209.chatting.client.Controller;
-import cn.edu.sustech.cs209.chatting.client.ConversationKey;
 import cn.edu.sustech.cs209.chatting.common.Message;
+import com.vdurmont.emoji.EmojiParser;
 
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 
 
@@ -133,7 +134,7 @@ public class Main {
                 }
 
             } catch (IOException e) {
-                System.out.println("Error:zxc " + e.getMessage());
+                System.out.println("Error:zxc, someone may quit " + e.getMessage());
             } finally {
                 if (username != null) {
                     users.remove(username);
@@ -182,7 +183,10 @@ public class Main {
             ObjectOutputStream targetWriter = users.get(targetUsername);
             if (targetWriter != null) {
                 targetWriter.reset();
-                targetWriter.writeObject(toString(message)+"@");
+                String unicode = message.getData();
+                String emoji = EmojiParser.parseToUnicode(unicode);
+                Message message1=new Message(message.getTimestamp(),message.getSentBy(),message.getSendTo(),emoji);
+                targetWriter.writeObject(toString(message1)+"@");
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + targetUsername + " not found.");
