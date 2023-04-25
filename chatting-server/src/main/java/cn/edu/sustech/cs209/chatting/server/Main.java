@@ -8,17 +8,16 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
-
-
 
 
 public class Main {
     private static final int PORT = 5005;
     private static Map<String, ObjectOutputStream> users = new ConcurrentHashMap<>();
     private static List<String> UserList = new ArrayList<>();
-    private static List<String> OnlineUserList=new ArrayList<>();
+    private static List<String> OnlineUserList = new ArrayList<>();
     private Map<ConversationKey, List<Message>> chatHistory_Server = new HashMap<>();
 
     public static void main(String[] args) {
@@ -57,7 +56,7 @@ public class Main {
                 in = new ObjectInputStream(socket.getInputStream());
                 //in.readObject();
                 out = new ObjectOutputStream(socket.getOutputStream());
-               // out.writeObject(new String());
+                // out.writeObject(new String());
                 out.flush();
 
             } catch (IOException e) {
@@ -69,17 +68,18 @@ public class Main {
             ObjectOutputStream targetWriter = users.get(username);
             if (targetWriter != null) {
                 targetWriter.reset();
-                targetWriter.writeObject(UserList.toString()+"qwertyui"+OnlineUserList.toString());
+                targetWriter.writeObject(UserList.toString() + "qwertyui" + OnlineUserList.toString());
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + username + " not found.");
             }
         }//has included sendOnlineUserList()
+
         private void sendOnlineUserList() throws IOException {
             ObjectOutputStream targetWriter = users.get(username);
             if (targetWriter != null) {
                 targetWriter.reset();
-                targetWriter.writeObject(OnlineUserList.toString()+"check");
+                targetWriter.writeObject(OnlineUserList.toString() + "check");
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + username + " not found.");
@@ -105,27 +105,27 @@ public class Main {
                         continue;
                     }
                     System.out.println("not null");
-                    if ( input instanceof File) {
+                    if (input instanceof File) {
                         handleFileTransfer((File) input);
                         return;
                     }
                     if (input instanceof String) {
-                        if(input.toString().endsWith("@")){
-                            Message m=fromString(input.toString());
-                            if(m.getSendTo().startsWith("#")){
+                        if (input.toString().endsWith("@")) {
+                            Message m = fromString(input.toString());
+                            if (m.getSendTo().startsWith("#")) {
                                 handleGroupMessage(m);
-                            }else handleMessage(m);
+                            } else handleMessage(m);
 
-                            System.out.println("Server is passing..."+input);
-                        }else {
-                            if((input.toString()).endsWith("~")){
-                                String dead=input.toString().substring(0,input.toString().length()-1);
-                                handleStringMessage("QUIT"+dead);
-                            }else {
+                            System.out.println("Server is passing..." + input);
+                        } else {
+                            if ((input.toString()).endsWith("~")) {
+                                String dead = input.toString().substring(0, input.toString().length() - 1);
+                                handleStringMessage("QUIT" + dead);
+                            } else {
                                 handleStringMessage(input.toString());
                             }
 
-                            System.out.println("Server is processing..."+input);
+                            System.out.println("Server is processing..." + input);
                         }
 
                     } else {
@@ -155,10 +155,10 @@ public class Main {
             if (messageContent.equals("OUSERLIST")) {
                 sendOnlineUserList();
             } else {
-                if(messageContent.startsWith("QUIT")){
-                    String sss=messageContent.substring(4);
+                if (messageContent.startsWith("QUIT")) {
+                    String sss = messageContent.substring(4);
                     OnlineUserList.remove(sss);
-                }else {
+                } else {
                     username = messageContent;
 //                for (ObjectOutputStream writer : users.values()) {
 //                    if (writer != out) {
@@ -173,8 +173,8 @@ public class Main {
                     if (!users.containsKey(username)) {
                         users.put(username, out);
                     }
-                    }
                 }
+            }
 
         }
 
@@ -185,29 +185,30 @@ public class Main {
                 targetWriter.reset();
                 String unicode = message.getData();
                 String emoji = EmojiParser.parseToUnicode(unicode);
-                Message message1=new Message(message.getTimestamp(),message.getSentBy(),message.getSendTo(),emoji);
-                targetWriter.writeObject(toString(message1)+"@");
+                Message message1 = new Message(message.getTimestamp(), message.getSentBy(), message.getSendTo(), emoji);
+                targetWriter.writeObject(toString(message1) + "@");
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + targetUsername + " not found.");
             }
         }
+
         private void handleGroupMessage(Message message) throws IOException {
             String targetUsername = message.getSendTo();
             String userListStrTemp = targetUsername.substring(1);
-            String userListStr = userListStrTemp.substring(1,userListStrTemp.length()-1);
+            String userListStr = userListStrTemp.substring(1, userListStrTemp.length() - 1);
             String[] userArray = userListStr.split("/ ");
-            List<String>userList = Arrays.asList(userArray);
-            userList.stream().forEach(uu->{
+            List<String> userList = Arrays.asList(userArray);
+            userList.stream().forEach(uu -> {
                 ObjectOutputStream targetWriter = users.get(uu);
                 if (targetWriter != null) {
                     try {
-                        Message message1=new Message(message.getTimestamp(),message.getSendTo(),uu,message.getSentBy()+":"+message.getData());
+                        Message message1 = new Message(message.getTimestamp(), message.getSendTo(), uu, message.getSentBy() + ":" + message.getData());
                         targetWriter.reset();
-                        targetWriter.writeObject(toString(message1)+"@");
+                        targetWriter.writeObject(toString(message1) + "@");
                         targetWriter.flush();
                     } catch (IOException e) {
-                        System.out.println("Error: User " + uu + message+" group chat error");
+                        System.out.println("Error: User " + uu + message + " group chat error");
                         e.printStackTrace();
                     }
 
@@ -217,11 +218,12 @@ public class Main {
             });
 
         }
+
         private void handleFileTransfer(File file) throws IOException {
             ObjectOutputStream targetWriter = users.get(username);
             targetWriter.writeObject(file);
             targetWriter.flush();
-            System.out.println("File"  + " saved.");
+            System.out.println("File" + " saved.");
         }
 //        public String convertObjectToJson(Object object) {
 //            Gson gson = new Gson();
@@ -230,7 +232,7 @@ public class Main {
 //        }
 
         public static Message fromString(String stro) {
-            String str=stro.substring(0,stro.length()-1);
+            String str = stro.substring(0, stro.length() - 1);
             String[] parts = str.split("\\|");
             if (parts.length != 4) {
                 throw new IllegalArgumentException("Invalid message format: " + str);
@@ -245,8 +247,9 @@ public class Main {
                 throw new IllegalArgumentException("Invalid message format: " + str, e);
             }
         }
-        public static String toString(Message message){
-            return message.getTimestamp()+"|"+message.getSentBy()+"|"+message.getSendTo()+"|"+message.getData();
+
+        public static String toString(Message message) {
+            return message.getTimestamp() + "|" + message.getSentBy() + "|" + message.getSendTo() + "|" + message.getData();
         }
 
     }

@@ -3,7 +3,6 @@ package cn.edu.sustech.cs209.chatting.client;
 import cn.edu.sustech.cs209.chatting.common.Message;
 import com.vdurmont.emoji.EmojiParser;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -11,26 +10,18 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 //import org.apache.commons.text.StringEscapeUtils;
 
-import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-
-
 
 
 public class Controller implements Initializable {
@@ -73,14 +64,14 @@ public class Controller implements Initializable {
 
             username = input.get();
             connectToServer();
-            if(userList!=null&&userList.contains(username)){
+            if (userList != null && userList.contains(username)) {
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Information Dialog");
                 alert.setHeaderText(null);
                 alert.setContentText("change the username");
                 alert.showAndWait();
                 Platform.exit();
-            }else {
+            } else {
                 currentUsername.setText("Current User: " + username);
                 chatList.setOnMouseClicked(event -> {
                     CustomItem selectedItem = chatList.getSelectionModel().getSelectedItem();
@@ -97,6 +88,7 @@ public class Controller implements Initializable {
 
         chatContentList.setCellFactory(new MessageCellFactory());
     }
+
     private void connectToServer() {
         String serverAddress = "127.0.0.1";
         int port = 5005;
@@ -104,7 +96,7 @@ public class Controller implements Initializable {
 
         try {
             socket = new Socket(serverAddress, port);
-            out =  new ObjectOutputStream(socket.getOutputStream());
+            out = new ObjectOutputStream(socket.getOutputStream());
             //out.writeObject(new String());
             out.flush();
             in = new ObjectInputStream(socket.getInputStream());
@@ -120,12 +112,12 @@ public class Controller implements Initializable {
 //                        if (messageListener.isRunning()) {
 //                            Thread.sleep(1000);
 //                        }
-                       // System.out.println("stop listening");
+                        // System.out.println("stop listening");
 
                         updateUserList();
 
                         //startListeningForMessages(messageListener);
-                       // System.out.println("start listening");
+                        // System.out.println("start listening");
                         Thread.sleep(10000); // Sleep for 10 seconds
 
                     } catch (InterruptedException e) {
@@ -154,31 +146,41 @@ public class Controller implements Initializable {
     }
 
     private void addMessageToHistory(String sender, String recipient, Message message) {
-            ConversationKey key = new ConversationKey(sender, recipient);
-            List<Message> conversation = chatHistory.getOrDefault(key, new ArrayList<>());
-            String unicode = message.getData();
-            String emoji = EmojiParser.parseToUnicode(unicode);
-            Message message1=new Message(message.getTimestamp(),message.getSentBy(),message.getSendTo(),emoji);
-            conversation.add(message1);
-            chatHistory.put(key, conversation);
+        ConversationKey key = new ConversationKey(sender, recipient);
+        List<Message> conversation = chatHistory.getOrDefault(key, new ArrayList<>());
+        String unicode = message.getData();
+        String emoji = EmojiParser.parseToUnicode(unicode);
+        Message message1 = new Message(message.getTimestamp(), message.getSentBy(), message.getSendTo(), emoji);
+        conversation.add(message1);
+        chatHistory.put(key, conversation);
 
     }
 
 
-
     private void openChatWindow(List<String> member) {
         member.add(username);
-        String t=member.toString().replaceAll(",","/");
+        String t = member.toString().replaceAll(",", "/");
         try {
-            out.writeObject("#"+t);
+            out.writeObject("#" + t);
             out.flush();
-//            Platform.runLater(()-> {
-//                try {
-//                    updateUserList();
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            });
+            Platform.runLater(() -> {
+                ListView<String> newListView = new ListView<>();
+                newListView.setPrefSize(chatList.getPrefWidth(), chatList.getPrefHeight());
+                List<CustomItem> j = chatList.getItems()
+                        .filtered(CustomItem::isOnline)
+                        .filtered(s -> member.contains(s.getText()));
+                newListView.getItems().clear();
+                List<String> lll = j.stream().map(s -> s.getText()).toList();
+                newListView.getItems().addAll(lll);
+
+
+                Stage newStage = new Stage();
+                Scene scene = new Scene(newListView);
+                newStage.setScene(scene);
+                newStage.setWidth(400);
+                newStage.setHeight(300);
+                newStage.show();
+            });
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -187,21 +189,20 @@ public class Controller implements Initializable {
     }
 
 
-
     private final Object userListLock = new Object();
 
     private void updateUserList() throws InterruptedException {
-        List<CustomItem> customItems=new ArrayList<>();
+        List<CustomItem> customItems = new ArrayList<>();
         Thread updateUserListThread = new Thread(() -> {
             try {
-                try{
+                try {
 //                    out.writeObject(username);
 //                    out.flush();
                     out.writeObject("USERLIST");
                     out.flush();
 //                    out.writeObject("OUSERLIST");
 //                    out.flush();
-                }catch (SocketException e){
+                } catch (SocketException e) {
                     Platform.runLater(() -> {
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
                         alert.setTitle("Please quit");
@@ -214,7 +215,6 @@ public class Controller implements Initializable {
                 }
 
 
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -224,19 +224,19 @@ public class Controller implements Initializable {
             try {
                 receivedObject = in.readObject();
             } catch (ClassNotFoundException | IOException e) {
-                System.out.println("Received error object"+receivedObject);
+                System.out.println("Received error object" + receivedObject);
             }
 
             if (receivedObject == null) {
                 System.out.println("Received null object");
             } else {
-                System.out.println("Received object: " + receivedObject+ receivedObject.getClass());
+                System.out.println("Received object: " + receivedObject + receivedObject.getClass());
 
             }
 
-            if(receivedObject instanceof File){
+            if (receivedObject instanceof File) {
                 try {
-                    receiveBytes((File) receivedObject,new File("C:\\Users\\86189\\Desktop\\download.txt"));
+                    receiveBytes((File) receivedObject, new File("C:\\Users\\86189\\Desktop\\download.txt"));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -246,42 +246,42 @@ public class Controller implements Initializable {
             if (receivedObject != null) {
                 userListStr = receivedObject.toString();
             } else userListStr = "[error]";
-                if(userListStr.endsWith("@")){
-                    System.out.println(userListStr);
-                    //String decodedMessage = StringEscapeUtils.unescapeJava(userListStr);
+            if (userListStr.endsWith("@")) {
+                System.out.println(userListStr);
+                //String decodedMessage = StringEscapeUtils.unescapeJava(userListStr);
 
-                    Message msg = fromString(userListStr);
-                    addMessageToHistory(username,msg.getSentBy(),msg);
-                    Platform.runLater(() ->  {
-                        chatContentList.getItems().add(msg);
-                        if(!msg.getSentBy().equals(username)){
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("New message received");
-                            alert.setHeaderText(null);
-                            alert.setContentText("You have a new message");
-                            alert.showAndWait();
+                Message msg = fromString(userListStr);
+                addMessageToHistory(username, msg.getSentBy(), msg);
+                Platform.runLater(() -> {
+                    chatContentList.getItems().add(msg);
+                    if (!msg.getSentBy().equals(username)) {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("New message received");
+                        alert.setHeaderText(null);
+                        alert.setContentText("You have a new message");
+                        alert.showAndWait();
+                    }
+
+                });
+            } else {
+                if (userListStr.startsWith("#")) {
+                    String finalUserListStr = userListStr;
+                    Platform.runLater(() -> {
+                        synchronized (userListLock) {
+                            System.out.println("Clearing chatList items...");
+                            chatList.getItems().clear();
+                            System.out.println("Adding new chatList items...");
+                            chatList.getItems().add(new CustomItem(finalUserListStr));
+                            //chatList.getItems().add(new CustomItem("test"));
+                            System.out.println("Added new chatList items");
                         }
-
-                    }   );
-                }else {
-                    if(userListStr.startsWith("#")){
-                        String finalUserListStr = userListStr;
-                        Platform.runLater(() -> {
-                            synchronized (userListLock) {
-                                System.out.println("Clearing chatList items...");
-                                chatList.getItems().clear();
-                                System.out.println("Adding new chatList items...");
-                                chatList.getItems().add(new CustomItem(finalUserListStr));
-                                //chatList.getItems().add(new CustomItem("test"));
-                                System.out.println("Added new chatList items");
-                            }
-                        });
-                    }else {
-                        if(userListStr.endsWith("check")){
-                            userListStr = userListStr.substring(1, userListStr.length() - 6); // Remove the brackets
-                            String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
-                            OnlineUserList = Arrays.asList(userArray);
-                            System.out.println("OnLineUser:"+OnlineUserList);
+                    });
+                } else {
+                    if (userListStr.endsWith("check")) {
+                        userListStr = userListStr.substring(1, userListStr.length() - 6); // Remove the brackets
+                        String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+                        OnlineUserList = Arrays.asList(userArray);
+                        System.out.println("OnLineUser:" + OnlineUserList);
 //                            Platform.runLater(()->{
 //                                if(OnlineUserList==null){
 //                                    return;
@@ -291,49 +291,46 @@ public class Controller implements Initializable {
 //                                    item.setOnline(online);
 //                                }
 //                            });
-                        }else
-                        {
-                            String[] two=userListStr.split("qwertyui");
-                            if(two.length!=2){
-                                System.out.println("UserList Error Format");
-                                return;
-                            }
-                            String allUser=two[0].substring(1,two[0].length()-1);
-                            String OnlineUser=two[1].substring(1,two[1].length()-1);
-                            String[] userArray = allUser.split(", "); // Split the string by commas and whitespace
-                            String[] OnlineUserArray = OnlineUser.split(", ");
-                            userList = Arrays.asList(userArray);
-                            OnlineUserList = Arrays.asList(OnlineUserArray);
-                            customItems.addAll(userList.stream().map(CustomItem::new).toList());
-                            System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
-
-                            Platform.runLater(() -> {
-                                synchronized (userListLock) {
-                                    currentOnlineCnt.setText("Online: "+OnlineUserList.size());
-                                    System.out.println("Clearing chatList items...");
-                                    chatList.getItems().clear();
-                                    System.out.println("Adding new chatList items...");
-                                    chatList.getItems().addAll(customItems.stream()
-                                            .filter(item -> !item.getText().equals(username)).toList());
-                                    //chatList.getItems().add(new CustomItem("test"));
-                                    System.out.println("Added new chatList items");
-                                    if(OnlineUserList==null){
-                                        return;
-                                    }
-                                    for (CustomItem item : chatList.getItems()) {
-                                        System.out.println("set online status");
-                                        boolean online = OnlineUserList.contains(item.getText());
-                                        item.setOnline(online);
-                                    }
-                                }
-                            });
+                    } else {
+                        String[] two = userListStr.split("qwertyui");
+                        if (two.length != 2) {
+                            System.out.println("UserList Error Format");
+                            return;
                         }
+                        String allUser = two[0].substring(1, two[0].length() - 1);
+                        String OnlineUser = two[1].substring(1, two[1].length() - 1);
+                        String[] userArray = allUser.split(", "); // Split the string by commas and whitespace
+                        String[] OnlineUserArray = OnlineUser.split(", ");
+                        userList = Arrays.asList(userArray);
+                        OnlineUserList = Arrays.asList(OnlineUserArray);
+                        customItems.addAll(userList.stream().map(CustomItem::new).toList());
+                        System.out.println("chatList:" + customItems.stream().map(s -> s.getText()).toList());
 
-
+                        Platform.runLater(() -> {
+                            synchronized (userListLock) {
+                                currentOnlineCnt.setText("Online: " + OnlineUserList.size());
+                                System.out.println("Clearing chatList items...");
+                                chatList.getItems().clear();
+                                System.out.println("Adding new chatList items...");
+                                chatList.getItems().addAll(customItems.stream()
+                                        .filter(item -> !item.getText().equals(username)).toList());
+                                //chatList.getItems().add(new CustomItem("test"));
+                                System.out.println("Added new chatList items");
+                                if (OnlineUserList == null) {
+                                    return;
+                                }
+                                for (CustomItem item : chatList.getItems()) {
+                                    System.out.println("set online status");
+                                    boolean online = OnlineUserList.contains(item.getText());
+                                    item.setOnline(online);
+                                }
+                            }
+                        });
                     }
+
+
+                }
             }
-
-
 
 
         });
@@ -342,6 +339,7 @@ public class Controller implements Initializable {
 
 
     }
+
     public void updateOnlineStatus(ListView<CustomItem> lll) throws IOException, ClassNotFoundException {
         out.writeObject("OUSERLIST");
         out.flush();
@@ -350,13 +348,13 @@ public class Controller implements Initializable {
         try {
             receivedObject = in.readObject();
         } catch (ClassNotFoundException | IOException e) {
-            System.out.println("Received error object"+receivedObject);
+            System.out.println("Received error object" + receivedObject);
         }
 
         if (receivedObject == null) {
             System.out.println("Received null object");
         } else {
-            System.out.println("Received object: " + receivedObject+ receivedObject.getClass());
+            System.out.println("Received object: " + receivedObject + receivedObject.getClass());
 
         }
 
@@ -368,8 +366,8 @@ public class Controller implements Initializable {
         String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
         OnlineUserList = Arrays.asList(userArray);
         System.out.println(OnlineUserList);
-        Platform.runLater(()->{
-            if(OnlineUserList==null){
+        Platform.runLater(() -> {
+            if (OnlineUserList == null) {
                 return;
             }
             for (CustomItem item : lll.getItems()) {
@@ -381,7 +379,6 @@ public class Controller implements Initializable {
     }
 
 
-
     private List<String> getSelectedUsers() {
         return chatList.getItems().stream()
                 .filter(CustomItem::isSelected)
@@ -390,18 +387,17 @@ public class Controller implements Initializable {
     }
 
 
-@FXML
-public void QUIT() throws IOException {
+    @FXML
+    public void QUIT() throws IOException {
 
 
-        out.writeObject(username+"~");
+        out.writeObject(username + "~");
         out.flush();
-    in.close();
-    out.close();
-    socket.close();
-    Platform.exit();
-}
-
+        in.close();
+        out.close();
+        socket.close();
+        Platform.exit();
+    }
 
 
     /**
@@ -423,7 +419,7 @@ public void QUIT() throws IOException {
 
         ListView<CustomItem> userListView = new ListView<>();
         userListView.getItems().addAll(chatList.getItems());
-        userListView.getItems().forEach(s->s.setCheckBoxVisible(true));
+        userListView.getItems().forEach(s -> s.setCheckBoxVisible(true));
         userListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         dialog.getDialogPane().setContent(userListView);
@@ -435,7 +431,7 @@ public void QUIT() throws IOException {
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == buttonTypeOk) {
                 List<String> selectedUsers = new ArrayList<>();
-                for (CustomItem user: userListView.getSelectionModel().getSelectedItems()){
+                for (CustomItem user : userListView.getSelectionModel().getSelectedItems()) {
                     selectedUsers.add(user.getText());
                 }
                 selectedUsers.addAll(getSelectedUsers());
@@ -452,8 +448,6 @@ public void QUIT() throws IOException {
         }
 
 
-
-
     }
 
 
@@ -466,12 +460,12 @@ public void QUIT() throws IOException {
     @FXML
     public void doSendMessage() {
         String message = inputArea.getText().trim();
-        Message msg = new Message(System.currentTimeMillis(),username,otherUser,message);
+        Message msg = new Message(System.currentTimeMillis(), username, otherUser, message);
         if (!message.isEmpty()) {
             // TODO: Send the message to the server.
             try {
                 System.out.println(toString(msg));
-                out.writeObject(toString(msg)+"@");
+                out.writeObject(toString(msg) + "@");
                 out.flush();
             } catch (IOException e) {
                 System.out.println("send illegal message");
@@ -482,7 +476,7 @@ public void QUIT() throws IOException {
             //chatContentList.getItems().add(msg);
             // Clear the input field.
             inputArea.clear();
-        }else {
+        } else {
             System.out.println("Cannot send null text");
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Warning");
@@ -491,7 +485,8 @@ public void QUIT() throws IOException {
             alert.showAndWait();
         }
     }
-//    private void startListeningForMessages() {
+
+    //    private void startListeningForMessages() {
 //        new Thread(() -> {
 //            while (true) {
 //                try {
@@ -529,17 +524,18 @@ public void QUIT() throws IOException {
 //            }
 //        }).start();
 //    }
-private void startListeningForMessages(MessageListener messageListener) {
-    try {
-        Thread thread = new Thread(messageListener);
-        thread.setDaemon(true);
-        thread.start();
-    } catch (Exception e) {
-        e.printStackTrace();
+    private void startListeningForMessages(MessageListener messageListener) {
+        try {
+            Thread thread = new Thread(messageListener);
+            thread.setDaemon(true);
+            thread.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
-}
+
     public static Message fromString(String stro) {
-        String str=stro.substring(0,stro.length()-1);
+        String str = stro.substring(0, stro.length() - 1);
         String[] parts = str.split("\\|");
         if (parts.length != 4) {
             throw new IllegalArgumentException("Invalid message format: " + str);
@@ -554,9 +550,11 @@ private void startListeningForMessages(MessageListener messageListener) {
             throw new IllegalArgumentException("Invalid message format: " + str, e);
         }
     }
-    public static String toString(Message message){
-        return message.getTimestamp()+"|"+message.getSentBy()+"|"+message.getSendTo()+"|"+message.getData();
+
+    public static String toString(Message message) {
+        return message.getTimestamp() + "|" + message.getSentBy() + "|" + message.getSendTo() + "|" + message.getData();
     }
+
     /**
      * You may change the cell factory if you changed the design of {@code Message} model.
      * Hint: you may also define a cell factory for the chats displayed in the left panel, or simply override the toString method.
@@ -580,10 +578,10 @@ private void startListeningForMessages(MessageListener messageListener) {
                     Label nameGroupLabel = new Label(msg.getData().split(":")[0]);
                     Label msgLabel = new Label(msg.getData());
 
-                    Label msgGroupLabel =new Label("QwQ");
-                    try{
+                    Label msgGroupLabel = new Label("QwQ");
+                    try {
                         msgGroupLabel = new Label(msg.getData().split(":")[1]);
-                    }catch (Exception ignored){
+                    } catch (Exception ignored) {
                     }
 
                     nameLabel.setPrefSize(250, 20);
@@ -601,18 +599,18 @@ private void startListeningForMessages(MessageListener messageListener) {
                         wrapper.getChildren().addAll(msgLabel, nameLabel);
                         msgLabel.setPadding(new Insets(0, 20, 0, 0));
                     } else {
-                        if(msg.getSentBy().startsWith("#")){
-                            if(username.equals(msg.getData().split(":")[0])){
+                        if (msg.getSentBy().startsWith("#")) {
+                            if (username.equals(msg.getData().split(":")[0])) {
                                 wrapper.setAlignment(Pos.TOP_RIGHT);
-                                wrapper.getChildren().addAll( msgGroupLabel,nameGroupLabel);
+                                wrapper.getChildren().addAll(msgGroupLabel, nameGroupLabel);
                                 msgLabel.setPadding(new Insets(0, 0, 0, 20));
-                            }else {
+                            } else {
                                 wrapper.setAlignment(Pos.TOP_LEFT);
                                 wrapper.getChildren().addAll(nameGroupLabel, msgGroupLabel);
                                 msgLabel.setPadding(new Insets(0, 0, 0, 20));
                             }
 
-                        }else {
+                        } else {
                             wrapper.setAlignment(Pos.TOP_LEFT);
                             wrapper.getChildren().addAll(nameLabel, msgLabel);
                             msgLabel.setPadding(new Insets(0, 0, 0, 20));
@@ -642,7 +640,8 @@ private void startListeningForMessages(MessageListener messageListener) {
             //sendFile(file);
         }
     }
-//    private void sendFile(File file) {
+
+    //    private void sendFile(File file) {
 //        try {
 //            ObjectOutputStream outF = new ObjectOutputStream(socket.getOutputStream());
 //            try {
@@ -675,11 +674,9 @@ private void startListeningForMessages(MessageListener messageListener) {
     }
 
 
-
     public void receiveBytes(File receive, File file) throws IOException {
-        FileCopyUtil.copy(receive,file);
+        FileCopyUtil.copy(receive, file);
     }
-
 
 
 }

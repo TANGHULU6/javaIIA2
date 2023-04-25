@@ -3,7 +3,7 @@ package cn.edu.sustech.cs209.chatting.common;
 import java.io.Serial;
 import java.io.Serializable;
 
-public class Message implements Serializable{
+public class Message implements Serializable {
 
     private Long timestamp;
 

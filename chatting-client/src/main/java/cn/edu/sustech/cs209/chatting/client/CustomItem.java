@@ -7,7 +7,7 @@ import javafx.scene.layout.HBox;
 public class CustomItem extends HBox {
     private CheckBox checkBox;
     private Label label;
-    private boolean online=true;
+    private boolean online = true;
 
 
     public CustomItem(String labelText) {
@@ -17,6 +17,7 @@ public class CustomItem extends HBox {
         setOnline(online);
         getChildren().addAll(checkBox, label);
     }
+
     public void setOnline(boolean online) {
         this.online = online;
         if (online) {
@@ -29,6 +30,7 @@ public class CustomItem extends HBox {
     public boolean isSelected() {
         return checkBox.isSelected();
     }
+
     public void setCheckBoxVisible(boolean tq) {
         checkBox.setVisible(tq);
     }
@@ -39,6 +41,10 @@ public class CustomItem extends HBox {
 
     public String getText() {
         return label.getText();
+    }
+
+    public boolean isOnline() {
+        return online;
     }
 
     @Override
