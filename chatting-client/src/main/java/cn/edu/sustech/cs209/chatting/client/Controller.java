@@ -234,9 +234,9 @@ public class Controller implements Initializable {
 
             }
 
-            if(receivedObject instanceof byte[]){
+            if(receivedObject instanceof File){
                 try {
-                    receiveBytes((byte[]) receivedObject,new File("C:\\Users\\86189\\Desktop\\download.txt"));
+                    receiveBytes((File) receivedObject,new File("C:\\Users\\86189\\Desktop\\download.txt"));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -634,39 +634,50 @@ private void startListeningForMessages(MessageListener messageListener) {
         File file = fileChooser.showOpenDialog(null);
 
         if (file != null) {
-            sendFile(file);
-        }
-    }
-    private void sendFile(File file) {
-        try {
-            ObjectOutputStream outF = new ObjectOutputStream(socket.getOutputStream());
             try {
-                outF.writeObject("FILE:"+ file.getName());
-                outF.flush();
+                out.writeObject(file);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            byte[] fileContent = Files.readAllBytes(file.toPath());
-            outF.writeObject(fileContent);
-            outF.flush();
-            System.out.println("transferring "+file.getName());
+            //sendFile(file);
+        }
+    }
+//    private void sendFile(File file) {
+//        try {
+//            ObjectOutputStream outF = new ObjectOutputStream(socket.getOutputStream());
+//            try {
+//                outF.writeObject("FILE:"+ file.getName());
+//                outF.flush();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            byte[] fileContent = Files.readAllBytes(file.toPath());
+//            outF.writeObject(fileContent);
+//            outF.flush();
+//            System.out.println("transferring "+file.getName());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
+    private void sendFile(File file) {
+        try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+             FileInputStream fis = new FileInputStream(file)) {
+            dos.writeUTF("FILE:" + file.getName());
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                dos.write(buffer, 0, bytesRead);
+            }
+            System.out.println("Transferred " + file.getName());
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
 
-    public void receiveBytes(byte[] data, File file) throws IOException {
-        ByteBuffer bb = ByteBuffer.wrap(data);
-        try (FileOutputStream fos = new FileOutputStream(file)) {
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while (bb.hasRemaining()) {
-                bytesRead = Math.min(bb.remaining(), buffer.length);
-                bb.get(buffer, 0, bytesRead);
-                fos.write(buffer, 0, bytesRead);
-            }
-        }
+
+    public void receiveBytes(File receive, File file) throws IOException {
+        FileCopyUtil.copy(receive,file);
     }
 
 

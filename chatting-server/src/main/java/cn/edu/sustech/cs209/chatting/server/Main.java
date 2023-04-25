@@ -92,13 +92,23 @@ public class Main {
                     Object input = null;
                     try {
                         input = in.readObject();
-                    } catch (ClassNotFoundException e) {
-                        System.out.println("Invalid object");
+                    } catch (Exception e) {
+//                        input = in.readUTF();
+//                        if (((String) input).startsWith("FILE:")) {
+//                            String filename = ((String) input).substring(5);
+//                            System.out.println(filename);
+//                            handleFileTransfer("filename",in.readAllBytes());
+//                            return;
+//                        }
                     }
                     if (input == null) {
                         continue;
                     }
                     System.out.println("not null");
+                    if ( input instanceof File) {
+                        handleFileTransfer((File) input);
+                        return;
+                    }
                     if (input instanceof String) {
                         if(input.toString().endsWith("@")){
                             Message m=fromString(input.toString());
@@ -108,16 +118,6 @@ public class Main {
 
                             System.out.println("Server is passing..."+input);
                         }else {
-                            if(input.toString().startsWith("FILE")){
-                                try {
-                                    byte[] file= (byte[]) in.readObject();
-                                    System.out.println(Arrays.toString(file));
-                                    handleFileTransfer(file);
-                                } catch (ClassNotFoundException e) {
-                                    e.printStackTrace();
-                                }
-                                return;
-                            }
                             if((input.toString()).endsWith("~")){
                                 String dead=input.toString().substring(0,input.toString().length()-1);
                                 handleStringMessage("QUIT"+dead);
@@ -217,11 +217,11 @@ public class Main {
             });
 
         }
-        private void handleFileTransfer(Object obj) throws IOException {
-            ObjectOutputStream outF = new ObjectOutputStream(socket.getOutputStream());
-            byte[] data = (byte[]) obj;
-           outF.writeObject(data);
-           outF.flush();
+        private void handleFileTransfer(File file) throws IOException {
+            ObjectOutputStream targetWriter = users.get(username);
+            targetWriter.writeObject(file);
+            targetWriter.flush();
+            System.out.println("File"  + " saved.");
         }
 //        public String convertObjectToJson(Object object) {
 //            Gson gson = new Gson();
