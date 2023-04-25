@@ -6,6 +6,7 @@ import cn.edu.sustech.cs209.chatting.common.Message;
 
 import java.io.*;
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -106,6 +107,16 @@ public class Main {
 
                             System.out.println("Server is passing..."+input);
                         }else {
+                            if(input.toString().startsWith("FILE")){
+                                try {
+                                    byte[] file= (byte[]) in.readObject();
+                                    System.out.println(Arrays.toString(file));
+                                    handleFileTransfer(file);
+                                } catch (ClassNotFoundException e) {
+                                    e.printStackTrace();
+                                }
+                                return;
+                            }
                             if((input.toString()).endsWith("~")){
                                 String dead=input.toString().substring(0,input.toString().length()-1);
                                 handleStringMessage("QUIT"+dead);
@@ -187,9 +198,9 @@ public class Main {
                 ObjectOutputStream targetWriter = users.get(uu);
                 if (targetWriter != null) {
                     try {
-                        //Message message1=new Message(message.getTimestamp(),message.getSentBy(),message.getSendTo(),message.getSentBy()+":"+message.getData());
+                        Message message1=new Message(message.getTimestamp(),message.getSendTo(),uu,message.getSentBy()+":"+message.getData());
                         targetWriter.reset();
-                        targetWriter.writeObject(toString(message)+"@");
+                        targetWriter.writeObject(toString(message1)+"@");
                         targetWriter.flush();
                     } catch (IOException e) {
                         System.out.println("Error: User " + uu + message+" group chat error");
@@ -202,7 +213,12 @@ public class Main {
             });
 
         }
-
+        private void handleFileTransfer(Object obj) throws IOException {
+            ObjectOutputStream outF = new ObjectOutputStream(socket.getOutputStream());
+            byte[] data = (byte[]) obj;
+           outF.writeObject(data);
+           outF.flush();
+        }
 //        public String convertObjectToJson(Object object) {
 //            Gson gson = new Gson();
 //            String json = gson.toJson(object);

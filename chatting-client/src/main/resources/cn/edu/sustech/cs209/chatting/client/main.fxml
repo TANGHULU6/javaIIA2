@@ -29,8 +29,10 @@
             <ListView fx:id="chatContentList" prefHeight="200.0" prefWidth="200.0"/>
             <HBox prefHeight="100.0" prefWidth="200.0">
                 <TextArea fx:id="inputArea" prefHeight="138.0" prefWidth="624.0" HBox.hgrow="ALWAYS"/>
+                <Button maxHeight="1.7976931348623157E308" mnemonicParsing="false" onAction="#sendFile"
+                        text="Send File" HBox.hgrow="NEVER" minWidth="100"/>
                 <Button maxHeight="1.7976931348623157E308" mnemonicParsing="false" onAction="#doSendMessage"
-                        text="Send" HBox.hgrow="ALWAYS"/>
+                        text="Send" HBox.hgrow="ALWAYS" minWidth="100"/>
             </HBox>
         </SplitPane>
     </SplitPane>
@@ -50,4 +52,5 @@
         <Pane HBox.hgrow="ALWAYS"/>
         <Label fx:id="currentOnlineCnt" font="$x3" text="Online: 1" textFill="$x4" HBox.hgrow="NEVER"/>
     </HBox>
+
 </VBox>
