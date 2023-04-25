@@ -109,7 +109,8 @@ public class Controller implements Initializable {
             in = new ObjectInputStream(socket.getInputStream());
             //in.readObject();
             //messageListener = new MessageListener( in,chatContentList,username,otherUser);
-
+            out.writeObject(username);
+            out.flush();
 
             new Thread(() -> {
                 while (true) {
@@ -119,6 +120,7 @@ public class Controller implements Initializable {
 //                            Thread.sleep(1000);
 //                        }
                        // System.out.println("stop listening");
+
                         updateUserList();
 
                         //startListeningForMessages(messageListener);
@@ -165,17 +167,16 @@ public class Controller implements Initializable {
     private void openChatWindow(List<String> member) {
         member.add(username);
         String t=member.toString().replaceAll(",","/");
-        CustomItem group=new CustomItem("#"+t);
         try {
             out.writeObject("#"+t);
             out.flush();
-            Platform.runLater(()-> {
-                try {
-                    updateUserList();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            });
+//            Platform.runLater(()-> {
+//                try {
+//                    updateUserList();
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            });
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -192,8 +193,8 @@ public class Controller implements Initializable {
         Thread updateUserListThread = new Thread(() -> {
             try {
                 try{
-                    out.writeObject(username);
-                    out.flush();
+//                    out.writeObject(username);
+//                    out.flush();
                     out.writeObject("USERLIST");
                     out.flush();
 //                    out.writeObject("OUSERLIST");
@@ -276,20 +277,24 @@ public class Controller implements Initializable {
                             String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
                             OnlineUserList = Arrays.asList(userArray);
                             System.out.println("OnLineUser:"+OnlineUserList);
-                            Platform.runLater(()->{
-                                if(OnlineUserList==null){
-                                    return;
-                                }
-                                for (CustomItem item : chatList.getItems()) {
-                                    boolean online = OnlineUserList.contains(item.getText());
-                                    item.setOnline(online);
-                                }
-                            });
+//                            Platform.runLater(()->{
+//                                if(OnlineUserList==null){
+//                                    return;
+//                                }
+//                                for (CustomItem item : chatList.getItems()) {
+//                                    boolean online = OnlineUserList.contains(item.getText());
+//                                    item.setOnline(online);
+//                                }
+//                            });
                         }else
                         {
-                            userListStr = userListStr.substring(1, userListStr.length() - 1); // Remove the brackets
-                            String[] userArray = userListStr.split(", "); // Split the string by commas and whitespace
+                            String[] two=userListStr.split("qwertyui");
+                            String allUser=two[0].substring(1,two[0].length()-1);
+                            String OnlineUser=two[1].substring(1,two[1].length()-1);
+                            String[] userArray = allUser.split(", "); // Split the string by commas and whitespace
+                            String[] OnlineUserArray = OnlineUser.split(", ");
                             userList = Arrays.asList(userArray);
+                            OnlineUserList = Arrays.asList(OnlineUserArray);
                             customItems.addAll(userList.stream().map(CustomItem::new).toList());
                             System.out.println("chatList:"+customItems.stream().map(s->s.getText()).toList());
 
@@ -302,6 +307,14 @@ public class Controller implements Initializable {
                                             .filter(item -> !item.getText().equals(username)).toList());
                                     //chatList.getItems().add(new CustomItem("test"));
                                     System.out.println("Added new chatList items");
+                                    if(OnlineUserList==null){
+                                        return;
+                                    }
+                                    for (CustomItem item : chatList.getItems()) {
+                                        System.out.println("set online status");
+                                        boolean online = OnlineUserList.contains(item.getText());
+                                        item.setOnline(online);
+                                    }
                                 }
                             });
                         }
@@ -453,8 +466,9 @@ public void QUIT() throws IOException {
             } catch (IOException e) {
                 System.out.println("send illegal message");
             }
-
-            addMessageToHistory(username,otherUser,msg);
+            if(otherUser.startsWith("#")){
+                addMessageToHistory(otherUser,username,msg);
+            }else addMessageToHistory(username,otherUser,msg);
             //chatContentList.getItems().add(msg);
             // Clear the input field.
             inputArea.clear();
@@ -548,22 +562,43 @@ private void startListeningForMessages(MessageListener messageListener) {
 
                     HBox wrapper = new HBox();
                     Label nameLabel = new Label(msg.getSentBy());
+                    Label nameGroupLabel = new Label(msg.getData().split(":")[0]);
                     Label msgLabel = new Label(msg.getData());
+                    Label msgGroupLabel = new Label(msg.getData().split(":")[1]);
+
 
                     nameLabel.setPrefSize(250, 20);
                     nameLabel.setWrapText(true);
                     nameLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
+                    nameGroupLabel.setPrefSize(250, 20);
+                    nameGroupLabel.setWrapText(true);
+                    nameGroupLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
                     Font emojiFont = Font.font("Noto Color Emoji", 14);
                     msgLabel.setFont(emojiFont);
+                    msgGroupLabel.setFont(emojiFont);
 
                     if (username.equals(msg.getSentBy())) {
                         wrapper.setAlignment(Pos.TOP_RIGHT);
                         wrapper.getChildren().addAll(msgLabel, nameLabel);
                         msgLabel.setPadding(new Insets(0, 20, 0, 0));
                     } else {
-                        wrapper.setAlignment(Pos.TOP_LEFT);
-                        wrapper.getChildren().addAll(nameLabel, msgLabel);
-                        msgLabel.setPadding(new Insets(0, 0, 0, 20));
+                        if(msg.getSentBy().startsWith("#")){
+                            if(username.equals(msg.getData().split(":")[0])){
+                                wrapper.setAlignment(Pos.TOP_RIGHT);
+                                wrapper.getChildren().addAll(nameGroupLabel, msgGroupLabel);
+                                msgLabel.setPadding(new Insets(0, 0, 0, 20));
+                            }else {
+                                wrapper.setAlignment(Pos.TOP_LEFT);
+                                wrapper.getChildren().addAll(nameGroupLabel, msgGroupLabel);
+                                msgLabel.setPadding(new Insets(0, 0, 0, 20));
+                            }
+
+                        }else {
+                            wrapper.setAlignment(Pos.TOP_LEFT);
+                            wrapper.getChildren().addAll(nameLabel, msgLabel);
+                            msgLabel.setPadding(new Insets(0, 0, 0, 20));
+                        }
+
                     }
 
                     setContentDisplay(ContentDisplay.GRAPHIC_ONLY);

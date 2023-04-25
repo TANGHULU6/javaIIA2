@@ -7,13 +7,14 @@ import javafx.scene.layout.HBox;
 public class CustomItem extends HBox {
     private CheckBox checkBox;
     private Label label;
-    private boolean online;
+    private boolean online=true;
 
 
     public CustomItem(String labelText) {
         checkBox = new CheckBox();
         checkBox.setVisible(false);
         label = new Label(labelText);
+        setOnline(online);
         getChildren().addAll(checkBox, label);
     }
     public void setOnline(boolean online) {

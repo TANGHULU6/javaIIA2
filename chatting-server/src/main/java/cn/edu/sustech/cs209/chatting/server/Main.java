@@ -69,12 +69,12 @@ public class Main {
             ObjectOutputStream targetWriter = users.get(username);
             if (targetWriter != null) {
                 targetWriter.reset();
-                targetWriter.writeObject(UserList.toString());
+                targetWriter.writeObject(UserList.toString()+"qwertyui"+OnlineUserList.toString());
                 targetWriter.flush();
             } else {
                 System.out.println("Error: User " + username + " not found.");
             }
-        }
+        }//has included sendOnlineUserList()
         private void sendOnlineUserList() throws IOException {
             ObjectOutputStream targetWriter = users.get(username);
             if (targetWriter != null) {
