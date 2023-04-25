@@ -47,6 +47,8 @@ public class Controller implements Initializable {
     private TextArea inputArea;
     @FXML
     ListView<CustomItem> chatList;
+    @FXML
+    Label currentOnlineCnt;
 
     Socket socket;
 
@@ -80,7 +82,6 @@ public class Controller implements Initializable {
                 Platform.exit();
             }else {
                 currentUsername.setText("Current User: " + username);
-
                 chatList.setOnMouseClicked(event -> {
                     CustomItem selectedItem = chatList.getSelectionModel().getSelectedItem();
                     if (selectedItem != null) {
@@ -153,13 +154,14 @@ public class Controller implements Initializable {
     }
 
     private void addMessageToHistory(String sender, String recipient, Message message) {
-        ConversationKey key = new ConversationKey(sender, recipient);
-        List<Message> conversation = chatHistory.getOrDefault(key, new ArrayList<>());
-        String unicode = message.getData();
-        String emoji = EmojiParser.parseToUnicode(unicode);
-        Message message1=new Message(message.getTimestamp(),message.getSentBy(),message.getSendTo(),emoji);
-        conversation.add(message1);
-        chatHistory.put(key, conversation);
+            ConversationKey key = new ConversationKey(sender, recipient);
+            List<Message> conversation = chatHistory.getOrDefault(key, new ArrayList<>());
+            String unicode = message.getData();
+            String emoji = EmojiParser.parseToUnicode(unicode);
+            Message message1=new Message(message.getTimestamp(),message.getSentBy(),message.getSendTo(),emoji);
+            conversation.add(message1);
+            chatHistory.put(key, conversation);
+
     }
 
 
@@ -252,11 +254,14 @@ public class Controller implements Initializable {
                     addMessageToHistory(username,msg.getSentBy(),msg);
                     Platform.runLater(() ->  {
                         chatContentList.getItems().add(msg);
-                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                        alert.setTitle("New message received");
-                        alert.setHeaderText(null);
-                        alert.setContentText("You have a new message");
-                        alert.showAndWait();
+                        if(!msg.getSentBy().equals(username)){
+                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                            alert.setTitle("New message received");
+                            alert.setHeaderText(null);
+                            alert.setContentText("You have a new message");
+                            alert.showAndWait();
+                        }
+
                     }   );
                 }else {
                     if(userListStr.startsWith("#")){
@@ -289,6 +294,10 @@ public class Controller implements Initializable {
                         }else
                         {
                             String[] two=userListStr.split("qwertyui");
+                            if(two.length!=2){
+                                System.out.println("UserList Error Format");
+                                return;
+                            }
                             String allUser=two[0].substring(1,two[0].length()-1);
                             String OnlineUser=two[1].substring(1,two[1].length()-1);
                             String[] userArray = allUser.split(", "); // Split the string by commas and whitespace
@@ -300,6 +309,7 @@ public class Controller implements Initializable {
 
                             Platform.runLater(() -> {
                                 synchronized (userListLock) {
+                                    currentOnlineCnt.setText("Online: "+OnlineUserList.size());
                                     System.out.println("Clearing chatList items...");
                                     chatList.getItems().clear();
                                     System.out.println("Adding new chatList items...");
@@ -466,14 +476,19 @@ public void QUIT() throws IOException {
             } catch (IOException e) {
                 System.out.println("send illegal message");
             }
-            if(otherUser.startsWith("#")){
-                addMessageToHistory(otherUser,username,msg);
-            }else addMessageToHistory(username,otherUser,msg);
+//            if(otherUser.startsWith("#")){
+//                addMessageToHistory(otherUser,username,msg);
+//            }else addMessageToHistory(username,otherUser,msg);
             //chatContentList.getItems().add(msg);
             // Clear the input field.
             inputArea.clear();
         }else {
             System.out.println("Cannot send null text");
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Warning");
+            alert.setHeaderText(null);
+            alert.setContentText("Cannot send null text");
+            alert.showAndWait();
         }
     }
 //    private void startListeningForMessages() {
@@ -564,8 +579,12 @@ private void startListeningForMessages(MessageListener messageListener) {
                     Label nameLabel = new Label(msg.getSentBy());
                     Label nameGroupLabel = new Label(msg.getData().split(":")[0]);
                     Label msgLabel = new Label(msg.getData());
-                    Label msgGroupLabel = new Label(msg.getData().split(":")[1]);
 
+                    Label msgGroupLabel =new Label("QwQ");
+                    try{
+                        msgGroupLabel = new Label(msg.getData().split(":")[1]);
+                    }catch (Exception ignored){
+                    }
 
                     nameLabel.setPrefSize(250, 20);
                     nameLabel.setWrapText(true);
@@ -585,7 +604,7 @@ private void startListeningForMessages(MessageListener messageListener) {
                         if(msg.getSentBy().startsWith("#")){
                             if(username.equals(msg.getData().split(":")[0])){
                                 wrapper.setAlignment(Pos.TOP_RIGHT);
-                                wrapper.getChildren().addAll(nameGroupLabel, msgGroupLabel);
+                                wrapper.getChildren().addAll( msgGroupLabel,nameGroupLabel);
                                 msgLabel.setPadding(new Insets(0, 0, 0, 20));
                             }else {
                                 wrapper.setAlignment(Pos.TOP_LEFT);
